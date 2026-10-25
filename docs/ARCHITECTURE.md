@@ -51,7 +51,9 @@ entitlements
   user_id         fk users
   programme_id    fk programmes
   source          enum('subscription','lifetime','bundle','manual')
-  source_ref      text              -- subscription id | payment_intent id | null
+  source_ref      text not null     -- subscription id | payment_intent id | 'bundle' | 'manual'
+                                    -- (NOT NULL on purpose: Postgres treats NULLs as distinct, so a
+                                    --  nullable column would let the unique constraint allow duplicates)
   status          enum('active','grace','revoked')
   grace_until     timestamptz null
   revoked_reason  text null         -- 'payment_failed' | 'canceled' | 'refunded' | 'manual'
