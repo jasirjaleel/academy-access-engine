@@ -7,7 +7,7 @@ const envSchema = z
     DATABASE_URL_DIRECT: z.string().optional(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1, "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required"),
     CLERK_SECRET_KEY: z.string().min(1, "CLERK_SECRET_KEY is required"),
-    CLERK_WEBHOOK_SIGNING_SECRET: z.string().min(1, "CLERK_WEBHOOK_SIGNING_SECRET is required"),
+    CLERK_WEBHOOK_SIGNING_SECRET: z.string().optional(), // only needed once deployed (Clerk can't reach localhost)
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),

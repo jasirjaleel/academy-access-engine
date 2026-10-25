@@ -29,18 +29,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider appearance={clerkAppearance}>
-      <html
-        lang="en"
-        className={`dark ${inter.variable} ${naskh.variable} h-full antialiased`}
-      >
-        <body className="relative flex min-h-full flex-col font-sans">
+    <html
+      lang="en"
+      className={`dark ${inter.variable} ${naskh.variable} h-full antialiased`}
+    >
+      <body className="relative flex min-h-full flex-col font-sans">
+        <ClerkProvider appearance={clerkAppearance}>
           <BackgroundPattern />
           <SiteHeader />
           {children}
           <Toaster />
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }
