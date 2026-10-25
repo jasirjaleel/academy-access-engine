@@ -17,7 +17,7 @@ The architecture, schema and event flow are fixed in `docs/ARCHITECTURE.md`. Fol
 | Framework | Next.js (latest stable), App Router, **TypeScript strict**, `src/` dir |
 | UI | Tailwind CSS v4 + shadcn/ui (Radix), lucide-react icons, **Inter** + Noto Naskh Arabic. Look and feel: `docs/DESIGN.md` |
 | Forms | React Hook Form + Zod |
-| Auth | Clerk (`@clerk/nextjs`) |
+| Auth | Clerk (`@clerk/nextjs` v7, Core 3). Use `<Show when="signed-in">` (`<SignedIn>`/`<SignedOut>` were removed). Route protection lives in `src/proxy.ts` (Next 16 renamed middleware). |
 | DB | Supabase Postgres via **Drizzle ORM** + `postgres` driver (server only). Do **not** use `@supabase/supabase-js`. |
 | Payments | Stripe Node SDK, **test mode only** |
 | Email | Resend (sent from n8n, not from the app) |
