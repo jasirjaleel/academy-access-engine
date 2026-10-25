@@ -32,3 +32,7 @@ Add one entry for every non-obvious choice: what, why, and what was rejected. Th
 ### D7: Test mode only
 **What:** `lib/env.ts` refuses `sk_live_` keys.
 **Why:** a portfolio deployment must never be able to charge a real card.
+
+### D10: Cache Components off
+**What:** `cacheComponents` (and `partialPrefetching`) are disabled in `next.config.ts`.
+**Why:** every dashboard page is personal to the student (auth + entitlements), so component caching adds Suspense requirements with no benefit for this app.
