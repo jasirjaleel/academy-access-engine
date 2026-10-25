@@ -24,6 +24,7 @@ Full task prompts live in `tasks/`. Tasks without a prompt file yet get one writ
 | M2.1 | Clerk install, middleware protects `/dashboard` + `/admin`, sign-in/up pages, header with UserButton | Logged out, `/dashboard` redirects to sign-in |
 | M2.2 | Clerk webhook `user.created`/`user.updated`/`user.deleted` → `users` table, idempotent via `processed_events` | Sign up → row in `users`; resend the event in the Clerk dashboard → no duplicate |
 | M2.3 | Admin guard in `admin/layout.tsx` via `publicMetadata.role` | A non-admin gets 404 at `/admin`; after setting role=admin in Clerk, it opens |
+| M2.4 | Apply `docs/DESIGN.md`: tokens, Inter + Naskh, background pattern, pill nav, landing hero, dark Clerk pages | Landing and sign-in match the navy/amber look; Inter everywhere; no horizontal scroll at 375 px |
 
 ## Monday
 

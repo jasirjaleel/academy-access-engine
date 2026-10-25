@@ -15,7 +15,7 @@ The architecture, schema and event flow are fixed in `docs/ARCHITECTURE.md`. Fol
 | Layer | Choice |
 |---|---|
 | Framework | Next.js (latest stable), App Router, **TypeScript strict**, `src/` dir |
-| UI | Tailwind CSS v4 + shadcn/ui (Radix), lucide-react icons |
+| UI | Tailwind CSS v4 + shadcn/ui (Radix), lucide-react icons, **Inter** + Noto Naskh Arabic. Look and feel: `docs/DESIGN.md` |
 | Forms | React Hook Form + Zod |
 | Auth | Clerk (`@clerk/nextjs`) |
 | DB | Supabase Postgres via **Drizzle ORM** + `postgres` driver (server only). Do **not** use `@supabase/supabase-js`. |
@@ -77,6 +77,7 @@ tasks/                            task prompts (do not modify unless asked)
 11. **No new dependencies** unless the task says so.
 12. **Student data:** never log full emails, phone numbers or Stripe payloads to the console. Log IDs only.
 13. **Don't delete or rewrite tests to make them pass.**
+14. **All UI follows `docs/DESIGN.md`** (tokens, recipes, dark only). Never add another organisation's name, logo or images.
 
 ## Definition of done (every task)
 - `npm run lint` and `npm run typecheck` pass (and `npm test` once tests exist).

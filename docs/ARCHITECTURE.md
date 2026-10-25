@@ -13,9 +13,9 @@ Each programme has 6–8 seeded lessons (title_en, title_ar, duration, a public 
 **Products → Stripe prices** (mapped in `lib/stripe.ts` from env price IDs):
 | product_key | Stripe mode | Price | Grants |
 |---|---|---|---|
-| `arabic_monthly` | subscription | $24/mo | arabic (+ usool bundle) |
-| `precision_monthly` | subscription | $24/mo | precision (+ usool bundle) |
-| `lifetime` | payment (one-time) | $499 | arabic + precision + usool, forever |
+| `arabic_monthly` | subscription | $30/mo | arabic (+ usool bundle) |
+| `precision_monthly` | subscription | $15/mo | precision (+ usool bundle) |
+| `lifetime` | payment (one-time) | $999 | arabic + precision + usool, forever |
 
 Regional pricing: a Stripe coupon `REGION40` (40% off, promotion codes enabled at Checkout).
 
