@@ -30,7 +30,7 @@ export default async function CheckoutSuccessPage({
   const ready = PRODUCTS[productKey].programmes.every((slug) => access[slug].hasAccess);
 
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 items-center px-4 py-16">
+    <div className="mx-auto flex w-full max-w-xl items-center py-10">
       {ready ? (
         <div className="w-full rounded-3xl border border-amber/30 bg-amber/[0.08] p-8 text-center shadow-[0_0_70px_-24px_rgba(237,140,68,0.55)] backdrop-blur-xl">
           <CheckCircle2 className="mx-auto size-12 text-amber" />
@@ -52,6 +52,6 @@ export default async function CheckoutSuccessPage({
           <Refresher />
         </div>
       )}
-    </main>
+    </div>
   );
 }
