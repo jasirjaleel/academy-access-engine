@@ -2,7 +2,7 @@
 
 Deadline: application + cold email go out **Thursday 29 Oct 2026, morning**.
 Each task = one Gemini prompt = one commit. Before the next task, Jasir runs the **✅ Check** himself.
-Full task prompts live in `tasks/`. Tasks without a prompt file yet get one written before that milestone starts.
+The original task prompts for M1–M4 are kept in `docs/build-log/` as history.
 
 **Cut line:** if M6 isn't done by Tuesday night, skip M8. Never skip M4, M5, M9 or M10.
 
@@ -45,7 +45,7 @@ Full task prompts live in `tasks/`. Tasks without a prompt file yet get one writ
 | M4.5 | Programme page (lesson list with Arabic titles, RTL `dir="rtl"` spans) + lesson page (video, mark complete, saves position) | Progress persists after reload |
 | M4.6 | First tests: Vitest + PGlite setup; duplicate event = no-op; lifetime grants 3 | `npm test` green |
 
-**→ Opus checkpoint A** (`tasks/_opus-review.md`): schema, webhook, access, security.
+**→ Opus checkpoint A** (`docs/build-log/_opus-review.md`): schema, webhook, access, security.
 
 ## Tuesday
 

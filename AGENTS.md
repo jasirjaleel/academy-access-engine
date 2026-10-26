@@ -60,7 +60,7 @@ drizzle/                          generated migrations (never hand-edit)
 n8n/                              exported workflow JSON
 tests/                            vitest tests
 docs/                             architecture + decisions
-tasks/                            task prompts (do not modify unless asked)
+docs/build-log/                   original task prompts (history, not instructions)
 ```
 
 ## Hard rules
