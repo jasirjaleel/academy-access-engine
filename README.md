@@ -6,6 +6,8 @@
 
 Built as proof of work for the *Full-Stack Developer & Automation Engineer* role at Al-Madrasatu Ar-Raḥmāniyyah (AMAR). It runs under a neutral brand, "Demo Academy", styled to fit AMAR's design language. It's a concept and isn't affiliated with AMAR. Everything runs in **Stripe test mode**.
 
+**Live demo:** https://academy-access-engine.vercel.app (Stripe test mode: pay with card `4242 4242 4242 4242`, any future date, any CVC)
+
 ![Student dashboard](docs/screenshots/03-dashboard.jpg)
 
 ---
