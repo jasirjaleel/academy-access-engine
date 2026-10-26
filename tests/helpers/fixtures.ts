@@ -99,3 +99,18 @@ export function fakeDeps(subs: Record<string, Stripe.Subscription> = {}): Billin
     now: () => NOW,
   };
 }
+
+export function invoice(
+  opts: Partial<{ id: string; subscriptionId: string; attempt: number; status: string; amount: number }> = {},
+): Stripe.Invoice {
+  return {
+    id: opts.id ?? "in_1",
+    object: "invoice",
+    status: opts.status ?? "open",
+    amount_due: opts.amount ?? 3000,
+    currency: "usd",
+    attempt_count: opts.attempt ?? 1,
+    customer: "cus_1",
+    parent: { type: "subscription_details", subscription_details: { subscription: opts.subscriptionId ?? "sub_1" } },
+  } as unknown as Stripe.Invoice;
+}

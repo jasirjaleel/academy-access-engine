@@ -55,12 +55,32 @@ async function ensureCoupon() {
   }
 }
 
+// Billing Portal: card updates + invoices only. Cancelling goes through our own flow (M6).
+async function ensurePortal() {
+  const existing = await stripe.billingPortal.configurations.list({ is_default: true, active: true, limit: 1 });
+  if (existing.data[0]) {
+    console.log("reused  billing portal configuration");
+    return;
+  }
+  await stripe.billingPortal.configurations.create({
+    business_profile: { headline: "Demo Academy: manage your payment method and invoices" },
+    features: {
+      payment_method_update: { enabled: true },
+      invoice_history: { enabled: true },
+      customer_update: { enabled: true, allowed_updates: ["email", "name"] },
+      subscription_cancel: { enabled: false },
+    },
+  });
+  console.log("created billing portal configuration");
+}
+
 async function main() {
   const lines: string[] = [];
   for (const productKey of PRODUCT_KEYS) {
     lines.push(`${ENV_NAME[productKey]}=${await ensurePrice(productKey)}`);
   }
   await ensureCoupon();
+  await ensurePortal();
   console.log("\nAdd these to .env.local (and Vercel):\n" + lines.join("\n"));
 }
 
