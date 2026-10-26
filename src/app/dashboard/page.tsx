@@ -1,6 +1,7 @@
 import { AlertTriangle, ArrowRight, BookOpen, Gift, Lock, Play } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { NamePrompt } from "@/components/dashboard/name-prompt";
 import { Arabic, Card, Eyebrow, formatDate, ProgressBar, StatusBadge } from "@/components/dashboard/ui";
 import { Button } from "@/components/ui/button";
 import { db } from "@/db";
@@ -24,6 +25,7 @@ export default async function DashboardPage() {
         <p className="mt-2 text-slate-400">Pick up where you left off, or start something new.</p>
       </header>
 
+      {!firstName ? <NamePrompt /> : null}
       {data.billing.graceUntil ? <PaymentBanner until={data.billing.graceUntil} /> : null}
       {data.continueWatching ? <ContinueWatching item={data.continueWatching} /> : null}
 
