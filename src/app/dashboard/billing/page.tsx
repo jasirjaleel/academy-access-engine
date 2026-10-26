@@ -24,9 +24,6 @@ export default async function BillingPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/dashboard" className="text-sm text-slate-400 hover:text-white">
-        ← Dashboard
-      </Link>
       <header>
         <Eyebrow>Billing</Eyebrow>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">Your plan</h1>

@@ -33,9 +33,6 @@ export default async function ProgrammePage({ params }: { params: Promise<{ slug
 
   return (
     <div className="space-y-6">
-      <Link href="/dashboard" className="text-sm text-slate-400 hover:text-white">
-        ← Dashboard
-      </Link>
       <header>
         <Eyebrow>Programme</Eyebrow>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">{programme.titleEn}</h1>

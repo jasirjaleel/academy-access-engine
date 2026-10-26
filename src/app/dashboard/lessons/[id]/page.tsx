@@ -38,9 +38,6 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="space-y-6">
-      <Link href={`/dashboard/programmes/${programme.slug}`} className="text-sm text-slate-400 hover:text-white">
-        ← {programme.titleEn}
-      </Link>
       <header>
         <Eyebrow>
           Lesson {lesson.position} · {programme.titleEn}

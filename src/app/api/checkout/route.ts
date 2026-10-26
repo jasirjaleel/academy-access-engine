@@ -51,7 +51,7 @@ export async function POST(req: Request) {
       ? { subscription_data: { metadata } }
       : { payment_intent_data: { metadata } }),
     success_url: `${env.NEXT_PUBLIC_APP_URL}/dashboard/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${env.NEXT_PUBLIC_APP_URL}/pricing?canceled=1`,
+    cancel_url: `${env.NEXT_PUBLIC_APP_URL}/dashboard/plans?canceled=1`,
   });
 
   return Response.json({ url: session.url });

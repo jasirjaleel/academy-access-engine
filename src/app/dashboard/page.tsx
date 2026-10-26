@@ -14,16 +14,39 @@ export default async function DashboardPage() {
 
   const data = await getDashboardData(db, user.id);
   const firstName = user.name?.split(" ")[0];
+  const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+  const completed = data.programmeCards.reduce((n, p) => n + p.completedLessons, 0);
+  const unlocked = data.programmeCards.filter((p) => p.access.hasAccess).length;
+  const planLabel = data.billing.hasLifetime
+    ? "Lifetime"
+    : data.billing.subscriptions.length > 0
+      ? data.billing.subscriptions.length === 1
+        ? "Monthly"
+        : `${data.billing.subscriptions.length} monthly`
+      : "None yet";
 
   return (
     <div className="space-y-8">
       <header>
-        <Eyebrow>Dashboard</Eyebrow>
+        <Eyebrow>{today}</Eyebrow>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
           Assalāmu ʿalaykum{firstName ? `, ${firstName}` : ""}
         </h1>
         <p className="mt-2 text-slate-400">Pick up where you left off, or start something new.</p>
       </header>
+
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Lessons completed", value: String(completed) },
+          { label: "Programmes unlocked", value: `${unlocked} of ${data.programmeCards.length}` },
+          { label: "Plan", value: planLabel },
+        ].map((s) => (
+          <div key={s.label} className="rounded-2xl bg-white/[0.03] px-4 py-3 ring-1 ring-white/10">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{s.label}</p>
+            <p className="mt-1 truncate text-lg font-bold text-white sm:text-xl">{s.value}</p>
+          </div>
+        ))}
+      </div>
 
       {!firstName ? <NamePrompt /> : null}
       {data.billing.graceUntil ? <PaymentBanner until={data.billing.graceUntil} /> : null}

@@ -104,3 +104,14 @@
 @utility font-arabic {
   font-family: var(--font-arabic);
 }
+
+/* App shell: glassy sidebar over the background pattern */
+:root {
+  --sidebar: rgb(22 33 58 / 0.72);
+  --sidebar-accent: rgb(255 255 255 / 0.05);
+  --sidebar-accent-foreground: #FFFFFF;
+}
+[data-sidebar="sidebar"] {
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}

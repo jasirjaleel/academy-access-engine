@@ -2,7 +2,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Inter, Noto_Naskh_Arabic } from "next/font/google";
 import { BackgroundPattern } from "@/components/background-pattern";
-import { SiteHeader } from "@/components/site-header";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { clerkAppearance } from "@/lib/clerk-appearance";
 import "./globals.css";
@@ -36,8 +36,7 @@ export default function RootLayout({
       <body className="relative flex min-h-full flex-col font-sans">
         <ClerkProvider appearance={clerkAppearance}>
           <BackgroundPattern />
-          <SiteHeader />
-          {children}
+          <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
           <Toaster />
         </ClerkProvider>
       </body>
