@@ -1,7 +1,16 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
-    { "path": "/api/cron/expire-grace", "schedule": "0 3 * * *" },
-    { "path": "/api/cron/dispatch-events", "schedule": "0 4 * * *" }
+    {
+      "path": "/api/cron/expire-grace",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/dispatch-events",
+      "schedule": "0 4 * * *"
+    }
+  ],
+  "regions": [
+    "hnd1"
   ]
 }
