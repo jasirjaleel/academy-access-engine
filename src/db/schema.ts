@@ -83,6 +83,7 @@ export const subscriptions = pgTable("subscriptions", {
   status: text("status").notNull(),
   currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
   cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  pausedUntil: timestamp("paused_until", { withTimezone: true }),
   updatedAt: updatedAt(),
 });
 

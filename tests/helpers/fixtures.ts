@@ -42,7 +42,7 @@ export async function seedBasics(db: Database, userId = "user_1") {
 }
 
 export function subscription(
-  opts: Partial<{ id: string; status: Stripe.Subscription.Status; productKey: ProductKey; userId: string; cancelAtPeriodEnd: boolean }> = {},
+  opts: Partial<{ id: string; status: Stripe.Subscription.Status; productKey: ProductKey; userId: string; cancelAtPeriodEnd: boolean; pausedUntil: number }> = {},
 ): Stripe.Subscription {
   const productKey = opts.productKey ?? "arabic_monthly";
   return {
@@ -51,6 +51,8 @@ export function subscription(
     status: opts.status ?? "active",
     customer: "cus_1",
     cancel_at_period_end: opts.cancelAtPeriodEnd ?? false,
+    cancel_at: opts.cancelAtPeriodEnd ? Math.floor(NOW.getTime() / 1000) + 30 * 86400 : null,
+    pause_collection: opts.pausedUntil ? { behavior: "void", resumes_at: opts.pausedUntil } : null,
     metadata: { userId: opts.userId ?? "user_1", productKey },
     items: {
       object: "list",
@@ -113,4 +115,17 @@ export function invoice(
     customer: "cus_1",
     parent: { type: "subscription_details", subscription_details: { subscription: opts.subscriptionId ?? "sub_1" } },
   } as unknown as Stripe.Invoice;
+}
+
+export function charge(opts: Partial<{ paymentIntent: string; amount: number; refunded: number }> = {}): Stripe.Charge {
+  const amount = opts.amount ?? 99900;
+  const refunded = opts.refunded ?? amount;
+  return {
+    id: "ch_1",
+    object: "charge",
+    amount,
+    amount_refunded: refunded,
+    refunded: refunded >= amount,
+    payment_intent: opts.paymentIntent ?? "pi_1",
+  } as unknown as Stripe.Charge;
 }

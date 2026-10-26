@@ -2,6 +2,7 @@ import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Card, Eyebrow, formatDate, StatusBadge } from "@/components/dashboard/ui";
+import { CancelFlow, KeepPlanButton } from "@/components/dashboard/cancel-flow";
 import { PortalButton } from "@/components/dashboard/portal-button";
 import { Button } from "@/components/ui/button";
 import { db } from "@/db";
@@ -64,17 +65,36 @@ export default async function BillingPage() {
             {billing.subscriptions.map((s) => {
               const label = statusLabel[s.status] ?? { kind: "locked" as const, text: s.status };
               return (
-                <li key={s.id} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-semibold text-white">{s.name}</p>
-                    <p className="text-sm text-slate-400">
-                      {s.status === "past_due"
-                        ? "Update your card and we'll retry the payment automatically."
-                        : `${s.cancelAtPeriodEnd ? "Ends" : "Renews"} on ${s.currentPeriodEnd ? formatDate(s.currentPeriodEnd) : "-"}`}
-                    </p>
+                <li key={s.id} className="py-4 first:pt-0 last:pb-0">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-semibold text-white">{s.name}</p>
+                      <p className="text-sm text-slate-400">
+                        {s.status === "past_due"
+                          ? "Update your card and we'll retry the payment automatically."
+                          : s.pausedUntil
+                            ? `Billing paused until ${formatDate(s.pausedUntil)}. Your access continues.`
+                            : `${s.cancelAtPeriodEnd ? "Ends" : "Renews"} on ${s.currentPeriodEnd ? formatDate(s.currentPeriodEnd) : "-"}`}
+                      </p>
+                    </div>
+                    <div className="self-start sm:self-auto">
+                      {s.cancelAtPeriodEnd ? (
+                        <StatusBadge kind="grace">Cancelled</StatusBadge>
+                      ) : s.pausedUntil ? (
+                        <StatusBadge kind="free">Paused</StatusBadge>
+                      ) : (
+                        <StatusBadge kind={label.kind}>{label.text}</StatusBadge>
+                      )}
+                    </div>
                   </div>
-                  <div className="self-start sm:self-auto">
-                    <StatusBadge kind={label.kind}>{label.text}</StatusBadge>
+                  <div className="mt-2">
+                    {s.cancelAtPeriodEnd ? (
+                      <KeepPlanButton subscriptionId={s.id} label="Keep my plan" />
+                    ) : s.pausedUntil ? (
+                      <KeepPlanButton subscriptionId={s.id} label="Resume billing now" />
+                    ) : s.status === "active" ? (
+                      <CancelFlow subscriptionId={s.id} planName={s.name} />
+                    ) : null}
                   </div>
                 </li>
               );

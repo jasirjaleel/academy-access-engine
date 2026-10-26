@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { entitlements, subscriptions, users } from "@/db/schema";
 import type { Database } from "@/db/types";
 import { PRODUCTS, type ProductKey } from "@/lib/catalogue";
+import { enqueueEvent } from "@/lib/events";
 import { syncBundle } from "./bundle";
 import { grantEntitlement, revokeEntitlements } from "./entitlements";
 import type { BillingDeps } from "./types";
@@ -39,6 +40,9 @@ export async function applySubscriptionState(
   const now = deps.now();
   // In current Stripe API versions the period lives on the subscription item.
   const currentPeriodEnd = new Date(item.current_period_end * 1000);
+  const resumesAt = sub.pause_collection?.resumes_at;
+  const pausedUntil = resumesAt ? new Date(resumesAt * 1000) : null;
+  const previous = await tx.query.subscriptions.findFirst({ where: eq(subscriptions.id, sub.id) });
 
   await tx
     .insert(subscriptions)
@@ -49,6 +53,7 @@ export async function applySubscriptionState(
       status: sub.status,
       currentPeriodEnd,
       cancelAtPeriodEnd: sub.cancel_at_period_end,
+      pausedUntil,
     })
     .onConflictDoUpdate({
       target: subscriptions.id,
@@ -57,6 +62,7 @@ export async function applySubscriptionState(
         productKey,
         currentPeriodEnd,
         cancelAtPeriodEnd: sub.cancel_at_period_end,
+        pausedUntil,
         updatedAt: sql`now()`,
       },
     });
@@ -80,7 +86,26 @@ export async function applySubscriptionState(
       { userId, source: "subscription", sourceRef: sub.id },
       inGrace ? "payment_failed" : "canceled",
     );
+    if (sub.status === "canceled") {
+      await enqueueEvent(tx, {
+        type: "subscription.ended",
+        userId,
+        payload: { subscriptionId: sub.id, productKey, reason: inGrace ? "payment_failed" : "canceled" },
+        dedupeKey: `ended:${sub.id}`,
+      });
+    }
   }
+  // Cancellation newly scheduled (the student keeps access until the period ends).
+  if (sub.cancel_at_period_end && !previous?.cancelAtPeriodEnd && !REVOKED_STATUSES.has(sub.status)) {
+    await enqueueEvent(tx, {
+      type: "subscription.cancel_scheduled",
+      userId,
+      payload: { subscriptionId: sub.id, productKey, endsAt: currentPeriodEnd.toISOString() },
+      // One notice per billing period, even if the student cancels, resumes and cancels again.
+      dedupeKey: `cancelsched:${sub.id}:${sub.cancel_at ?? item.current_period_end}`,
+    });
+  }
+
   // past_due: handled by invoice.payment_failed (grace period, M5).
   // incomplete / paused: no access change.
 

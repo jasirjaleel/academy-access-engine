@@ -55,6 +55,17 @@ async function ensureCoupon() {
   }
 }
 
+// Retention offer in the cancel flow (M6): 30% off the next payment.
+async function ensureRetentionCoupon() {
+  try {
+    await stripe.coupons.retrieve("STAY30");
+    console.log("reused  coupon STAY30");
+  } catch {
+    await stripe.coupons.create({ id: "STAY30", percent_off: 30, duration: "once", name: "Stay with us: 30% off" });
+    console.log("created coupon STAY30");
+  }
+}
+
 // Billing Portal: card updates + invoices only. Cancelling goes through our own flow (M6).
 async function ensurePortal() {
   const existing = await stripe.billingPortal.configurations.list({ is_default: true, active: true, limit: 1 });
@@ -80,6 +91,7 @@ async function main() {
     lines.push(`${ENV_NAME[productKey]}=${await ensurePrice(productKey)}`);
   }
   await ensureCoupon();
+  await ensureRetentionCoupon();
   await ensurePortal();
   console.log("\nAdd these to .env.local (and Vercel):\n" + lines.join("\n"));
 }

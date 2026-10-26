@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import type { Database } from "@/db/types";
 import { handleCheckoutCompleted } from "./checkout";
 import { handleInvoicePaid, handleInvoicePaymentFailed } from "./invoices";
+import { handleChargeRefunded } from "./refunds";
 import { applySubscriptionState } from "./subscription-state";
 import type { BillingDeps, HandlerResult } from "./types";
 
@@ -28,6 +29,9 @@ export async function handleStripeEvent(
 
     case "invoice.paid":
       return handleInvoicePaid(tx, event.data.object, deps);
+
+    case "charge.refunded":
+      return handleChargeRefunded(tx, event.data.object, deps);
 
     default:
       return "ignored";

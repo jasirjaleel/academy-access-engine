@@ -61,6 +61,7 @@ export async function getDashboardData(db: Database, userId: string, now = new D
         status: s.status,
         currentPeriodEnd: s.currentPeriodEnd,
         cancelAtPeriodEnd: s.cancelAtPeriodEnd,
+        pausedUntil: s.pausedUntil && s.pausedUntil > now ? s.pausedUntil : null,
       })),
       graceUntil: graceDates.length ? new Date(Math.min(...graceDates.map((d) => d.getTime()))) : null,
     },
