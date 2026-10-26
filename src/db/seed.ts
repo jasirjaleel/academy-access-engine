@@ -8,8 +8,9 @@ import { lessons, programmes } from "./schema";
 
 config({ path: ".env.local" });
 
+// CC0 sample clip (MDN). Swap for real lesson videos later.
 const PLACEHOLDER_VIDEO =
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
+  "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
 
 type SeedLesson = [titleEn: string, titleAr: string, minutes: number];
 

@@ -12,14 +12,14 @@ export default async function DashboardPage() {
   if (!user) redirect("/sign-in");
 
   const data = await getDashboardData(db, user.id);
-  const firstName = user.name?.split(" ")[0] ?? "student";
+  const firstName = user.name?.split(" ")[0];
 
   return (
     <div className="space-y-8">
       <header>
         <Eyebrow>Dashboard</Eyebrow>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-          Assalāmu ʿalaykum, {firstName}
+          Assalāmu ʿalaykum{firstName ? `, ${firstName}` : ""}
         </h1>
         <p className="mt-2 text-slate-400">Pick up where you left off, or start something new.</p>
       </header>
