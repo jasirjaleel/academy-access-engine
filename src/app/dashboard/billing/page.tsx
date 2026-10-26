@@ -68,10 +68,14 @@ export default async function BillingPage() {
                   <div>
                     <p className="font-semibold text-white">{s.name}</p>
                     <p className="text-sm text-slate-400">
-                      {s.cancelAtPeriodEnd ? "Ends" : "Renews"} on {s.currentPeriodEnd ? formatDate(s.currentPeriodEnd) : "-"}
+                      {s.status === "past_due"
+                        ? "Update your card and we'll retry the payment automatically."
+                        : `${s.cancelAtPeriodEnd ? "Ends" : "Renews"} on ${s.currentPeriodEnd ? formatDate(s.currentPeriodEnd) : "-"}`}
                     </p>
                   </div>
-                  <StatusBadge kind={label.kind}>{label.text}</StatusBadge>
+                  <div className="self-start sm:self-auto">
+                    <StatusBadge kind={label.kind}>{label.text}</StatusBadge>
+                  </div>
                 </li>
               );
             })}

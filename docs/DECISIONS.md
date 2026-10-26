@@ -52,3 +52,7 @@ Add one entry for every non-obvious choice: what, why, and what was rejected. Th
 ### D12: Row Level Security on, no policies
 **What:** RLS is enabled on every table (migration `0001_enable_rls`).
 **Why:** Supabase exposes `public` tables through its auto-generated Data API. The app connects as the table owner (bypasses RLS), so this blocks the API without affecting the app.
+
+### D13: Grace counts from the first failure; portal can't cancel
+**What:** the 7-day grace starts at the invoice's first failed attempt; Stripe's retries send new reminders but don't extend it. The Stripe Billing Portal allows card updates and invoices only.
+**Why:** retries shouldn't quietly give extra free weeks. Cancelling goes through our own flow (M6), which records the reason and can offer a pause first.

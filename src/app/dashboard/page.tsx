@@ -154,8 +154,9 @@ function BillingCard({ billing }: { billing: DashboardData["billing"] }) {
                 <li key={s.id}>
                   <span className="font-semibold text-white">{s.name}</span>{" "}
                   <span className="text-sm text-slate-400">
-                    {s.cancelAtPeriodEnd ? "ends" : "renews"} on{" "}
-                    {s.currentPeriodEnd ? formatDate(s.currentPeriodEnd) : "-"}
+                    {s.status === "past_due"
+                      ? "payment failed"
+                      : `${s.cancelAtPeriodEnd ? "ends" : "renews"} on ${s.currentPeriodEnd ? formatDate(s.currentPeriodEnd) : "-"}`}
                   </span>
                 </li>
               ))}
