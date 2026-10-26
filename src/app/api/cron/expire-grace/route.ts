@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { expireGrace } from "@/lib/billing/grace";
+import { scheduleDispatch } from "@/lib/dispatch-live";
 import { env } from "@/lib/env";
 
 export const runtime = "nodejs";
@@ -11,5 +12,6 @@ export async function GET(req: Request) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
   const expired = await expireGrace(db);
+  if (expired > 0) scheduleDispatch();
   return Response.json({ ok: true, expired });
 }

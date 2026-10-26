@@ -9,6 +9,7 @@ import { cancellationFeedback, subscriptions } from "@/db/schema";
 import { liveDeps } from "@/lib/billing/live";
 import { applySubscriptionState } from "@/lib/billing/subscription-state";
 import { CANCEL_REASONS, DISCOUNT_COUPON, offerFor, PAUSE_DAYS, type RetentionOffer } from "@/lib/cancellation";
+import { scheduleDispatch } from "@/lib/dispatch-live";
 import { getStripe } from "@/lib/stripe";
 
 const reasonSchema = z.enum(Object.keys(CANCEL_REASONS) as [keyof typeof CANCEL_REASONS, ...(keyof typeof CANCEL_REASONS)[]]);
@@ -33,6 +34,7 @@ async function ownedSubscription(subscriptionId: string) {
 async function mirror(subscriptionId: string) {
   const fresh = await getStripe().subscriptions.retrieve(subscriptionId);
   await db.transaction((tx) => applySubscriptionState(tx, fresh, liveDeps));
+  scheduleDispatch();
 }
 
 export async function getRetentionOffer(raw: { subscriptionId: string; reason: string }): Promise<RetentionOffer> {

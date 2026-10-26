@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { db } from "@/db";
 import { handleStripeEvent } from "@/lib/billing";
 import { liveDeps } from "@/lib/billing/live";
+import { scheduleDispatch } from "@/lib/dispatch-live";
 import { env } from "@/lib/env";
 import { getStripe } from "@/lib/stripe";
 import { withIdempotency } from "@/lib/webhooks";
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
       { id: event.id, provider: "stripe", type: event.type },
       (tx) => handleStripeEvent(tx, event, liveDeps),
     );
+    if (!duplicate) scheduleDispatch();
     return Response.json({ received: true, duplicate });
   } catch {
     // Log ids only (no payloads / personal data). 500 → Stripe retries.
