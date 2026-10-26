@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, PauseCircle, Percent } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { finishCancellation, getRetentionOffer, keepSubscription } from "@/app/dashboard/billing/actions";
@@ -15,6 +16,7 @@ export function CancelFlow({ subscriptionId, planName }: { subscriptionId: strin
   const [comment, setComment] = useState("");
   const [offer, setOffer] = useState<RetentionOffer>(null);
   const [pending, start] = useTransition();
+  const router = useRouter();
 
   const finish = (decision: "accept_offer" | "cancel") =>
     start(async () => {
@@ -22,6 +24,7 @@ export function CancelFlow({ subscriptionId, planName }: { subscriptionId: strin
         const { message } = await finishCancellation({ subscriptionId, reason: reason!, comment, decision });
         toast.success(message);
         setStep("closed");
+        router.refresh();
       } catch {
         toast.error("Something went wrong. Please try again.");
       }
@@ -114,6 +117,7 @@ export function CancelFlow({ subscriptionId, planName }: { subscriptionId: strin
 
 export function KeepPlanButton({ subscriptionId, label }: { subscriptionId: string; label: string }) {
   const [pending, start] = useTransition();
+  const router = useRouter();
   return (
     <Button
       variant="secondary"
@@ -122,6 +126,7 @@ export function KeepPlanButton({ subscriptionId, label }: { subscriptionId: stri
         start(async () => {
           try {
             toast.success((await keepSubscription(subscriptionId)).message);
+            router.refresh();
           } catch {
             toast.error("Something went wrong. Please try again.");
           }

@@ -56,3 +56,11 @@ Add one entry for every non-obvious choice: what, why, and what was rejected. Th
 ### D13: Grace counts from the first failure; portal can't cancel
 **What:** the 7-day grace starts at the invoice's first failed attempt; Stripe's retries send new reminders but don't extend it. The Stripe Billing Portal allows card updates and invoices only.
 **Why:** retries shouldn't quietly give extra free weeks. Cancelling goes through our own flow (M6), which records the reason and can offer a pause first.
+
+### D14: Refunds revoke what they paid for
+**What:** a full refund of a one-time (lifetime) payment revokes the entitlements whose `source_ref` is that payment intent; the bundle follows. Partial refunds change nothing. Subscription refunds are done by cancelling in Stripe, which arrives as `customer.subscription.deleted`.
+**Why:** access must match money actually kept, but a goodwill partial refund shouldn't lock a student out. Other access (e.g. a separate subscription) is untouched.
+
+### D15: Session pooler for the app, plus connection timeouts
+**What:** `DATABASE_URL` uses Supabase's session pooler (5432). The client recycles idle (20 s) and old (10 min) connections.
+**Why:** while testing M6 locally, page renders hung with Postgres sessions "active / ClientRead" (the database waiting for the app mid-query) on the transaction pooler, while a server action, a router refresh and a webhook transaction overlapped. On the session pooler, repeated cancel/keep/pause cycles ran cleanly. For a small app the session pooler's connection limit is not a constraint.

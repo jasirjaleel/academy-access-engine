@@ -8,7 +8,17 @@ import * as schema from "./schema";
 const globalForDb = globalThis as unknown as { pgClient?: ReturnType<typeof postgres> };
 
 // prepare: false is required by the Supabase transaction pooler.
-const client = globalForDb.pgClient ?? postgres(env.DATABASE_URL, { prepare: false });
+// Timeouts make dropped/half-open connections (hot reloads, serverless freezes) get recycled
+// instead of holding pooler slots until the database's statement timeout fires.
+const client =
+  globalForDb.pgClient ??
+  postgres(env.DATABASE_URL, {
+    prepare: false,
+    max: 5,
+    idle_timeout: 20,
+    max_lifetime: 60 * 10,
+    connect_timeout: 10,
+  });
 if (env.NODE_ENV !== "production") globalForDb.pgClient = client;
 
 export const db = drizzle(client, { schema });
