@@ -1,0 +1,133 @@
+{
+  "id": "acadErrorAlert01",
+  "name": "Academy – error alert",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e1",
+      "name": "On workflow error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Runs when any academy workflow fails. Sends one alert email (or logs it when no email provider is set).\nconst e = $input.first().json;\nconst failedNode = e.execution?.lastNodeExecuted || 'unknown node';\nconst message = e.execution?.error?.message || 'unknown error';\nconst url = e.execution?.url || '';\nreturn [{\n  json: {\n    mode: $env.RESEND_API_KEY && $env.ALERT_EMAIL ? 'resend' : 'dry_run',\n    request: {\n      from: $env.EMAIL_FROM || 'Demo Academy <onboarding@resend.dev>',\n      to: [$env.ALERT_EMAIL || 'admin@example.com'],\n      subject: `[Academy] Workflow failed at \"${failedNode}\"`,\n      text: `Workflow: ${e.workflow?.name}\\nNode: ${failedNode}\\nError: ${message}\\nExecution: ${url}`,\n    },\n  },\n}];\n"
+      },
+      "id": "e2",
+      "name": "Compose alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 2,
+        "output": "={{ $json.mode === 'resend' ? 0 : 1 }}"
+      },
+      "id": "e3",
+      "name": "Email provider?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.RESEND_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {}
+      },
+      "id": "e4",
+      "name": "Send alert (Resend)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        220
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {},
+      "id": "e5",
+      "name": "Dry run: alert composed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        720,
+        380
+      ]
+    }
+  ],
+  "connections": {
+    "On workflow error": {
+      "main": [
+        [
+          {
+            "node": "Compose alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose alert": {
+      "main": [
+        [
+          {
+            "node": "Email provider?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email provider?": {
+      "main": [
+        [
+          {
+            "node": "Send alert (Resend)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Dry run: alert composed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

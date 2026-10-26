@@ -1,0 +1,366 @@
+{
+  "id": "acadLifecycle001",
+  "name": "Academy – lifecycle messages",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "academy-events",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1",
+      "name": "Academy event (webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "6f1e4f6e-9b1c-4a52-9d31-acad0e000001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verify the request, drop duplicates, and compose the messages.\n// Needs env: ACADEMY_SIGNING_SECRET, NODE_FUNCTION_ALLOW_BUILTIN=crypto, N8N_BLOCK_ENV_ACCESS_IN_NODE=false\nconst crypto = require('crypto');\nconst { headers = {}, body } = $input.first().json;\nconst secret = $env.ACADEMY_SIGNING_SECRET;\n\n// 1) Signature over \"<timestamp>.<body>\" (the app signs compact JSON; parse+stringify round-trips it exactly)\nconst ts = Number(headers['x-academy-timestamp']);\nconst expected = 'sha256=' + crypto.createHmac('sha256', secret || '').update(`${ts}.${JSON.stringify(body)}`).digest('hex');\nconst given = String(headers['x-academy-signature'] || '');\nconst signatureOk = Boolean(secret) && given.length === expected.length\n  && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected));\nconst fresh = Number.isFinite(ts) && Math.abs(Date.now() / 1000 - ts) < 300;\nif (!signatureOk || !fresh) {\n  return [{ json: { status: 'invalid', reason: signatureOk ? 'stale timestamp' : 'bad signature' } }];\n}\n\n// 2) De-duplicate on dedupeKey (the app delivers at least once). Kept 30 days.\nconst store = $getWorkflowStaticData('global');\nstore.seen = store.seen || {};\nconst now = Date.now();\nfor (const [key, at] of Object.entries(store.seen)) if (now - at > 30 * 86400000) delete store.seen[key];\nif (store.seen[body.dedupeKey]) return [{ json: { status: 'duplicate', dedupeKey: body.dedupeKey } }];\nstore.seen[body.dedupeKey] = now;\n\n// 3) Compose\nconst s = body.student;\nconst tz = s.timezone || 'UTC';\nconst name = s.firstName ? ` ${s.firstName}` : '';\nconst date = (iso) => iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: tz }) : '';\nconst p = body.payload || {};\nconst L = body.links;\n\nconst copy = {\n  'student.enrolled': {\n    subject: 'Welcome to Demo Academy',\n    lines: [`Assalāmu ʿalaykum${name},`, 'Your access is ready. The best time to begin is today: your first lesson takes about ten minutes.'],\n    cta: ['Start lesson 1', L.dashboard],\n  },\n  'student.inactive_3d': {\n    subject: 'Your first lesson is waiting',\n    lines: [`Assalāmu ʿalaykum${name},`, \"You joined a few days ago but haven't started yet. Ten minutes today is a good beginning, in shā' Allāh.\"],\n    cta: ['Open my programmes', L.dashboard],\n  },\n  'payment.failed': {\n    subject: \"Your payment didn't go through\",\n    lines: [`Assalāmu ʿalaykum${name},`, `We couldn't take your last payment. Your access continues until ${date(p.graceUntil)}.`, \"Please update your card and we'll retry automatically.\"],\n    cta: ['Update my card', L.billing],\n  },\n  'payment.recovered': {\n    subject: 'Payment received, thank you',\n    lines: [`Assalāmu ʿalaykum${name},`, 'Your payment went through and your access is back to normal. Bārak Allāhu fīk.'],\n    cta: ['Continue learning', L.dashboard],\n  },\n  'subscription.cancel_scheduled': {\n    subject: `Your plan will end on ${date(p.endsAt)}`,\n    lines: [`Assalāmu ʿalaykum${name},`, `Your plan is cancelled and you keep access until ${date(p.endsAt)}. Changed your mind? You can keep it with one click.`],\n    cta: ['Keep my plan', L.billing],\n  },\n  'subscription.ended': {\n    subject: 'Your plan has ended',\n    lines: [`Assalāmu ʿalaykum${name},`, 'Your plan has ended. Your progress is saved, and you can pick up where you left off any time.'],\n    cta: ['See plans', L.pricing],\n  },\n  'access.revoked': {\n    subject: 'Your access has ended',\n    lines: [`Assalāmu ʿalaykum${name},`, p.reason === 'refunded' ? 'Your refund has been processed and your access has ended.' : 'Your access has ended because the payment could not be completed.'],\n    cta: ['See plans', L.pricing],\n  },\n}[body.type];\nif (!copy) return [{ json: { status: 'accepted', type: body.type, dedupeKey: body.dedupeKey, email: { mode: 'skip' }, whatsapp: { send: false } } }];\n\nconst html = `<div style=\"font-family:Inter,Arial,sans-serif;background:#0F1829;padding:32px;color:#E2E8F0\">\n<div style=\"max-width:520px;margin:auto;background:#16213A;border-radius:16px;padding:28px\">\n<p style=\"color:#ED8C44;font-size:12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;margin:0 0 16px\">Demo Academy</p>\n${copy.lines.map((l) => `<p style=\"line-height:1.6;margin:0 0 12px\">${l}</p>`).join('')}\n<a href=\"${copy.cta[1]}\" style=\"display:inline-block;margin-top:12px;background:#ED8C44;color:#0F1829;font-weight:700;padding:12px 20px;border-radius:14px;text-decoration:none\">${copy.cta[0]}</a>\n</div></div>`;\nconst text = `${copy.lines.join('\\n\\n')}\\n\\n${copy.cta[0]}: ${copy.cta[1]}`;\n\n// 4) WhatsApp only for failed payments, only with opt-in, never during the student's night (21:00–08:00)\nlet whatsapp = { send: false };\nif (body.type === 'payment.failed' && s.whatsapp && $env.WHATSAPP_TOKEN && $env.WHATSAPP_PHONE_NUMBER_ID) {\n  let local = DateTime.now().setZone(tz);\n  let sendAt = local;\n  if (local.hour >= 21) sendAt = local.plus({ days: 1 }).set({ hour: 8, minute: 0, second: 0 });\n  else if (local.hour < 8) sendAt = local.set({ hour: 8, minute: 0, second: 0 });\n  whatsapp = {\n    send: true,\n    sendAt: sendAt.toUTC().toISO(),\n    request: {\n      messaging_product: 'whatsapp',\n      to: s.whatsapp.replace(/^\\+/, ''),\n      type: 'template',\n      template: {\n        name: $env.WHATSAPP_TEMPLATE_PAYMENT_FAILED || 'payment_failed',\n        language: { code: 'en' },\n        components: [{ type: 'body', parameters: [{ type: 'text', text: s.firstName || 'there' }, { type: 'text', text: date(p.graceUntil) }] }],\n      },\n    },\n  };\n}\n\nreturn [{\n  json: {\n    status: 'accepted',\n    type: body.type,\n    dedupeKey: body.dedupeKey,\n    email: {\n      mode: $env.RESEND_API_KEY ? 'resend' : 'dry_run',\n      request: { from: $env.EMAIL_FROM || 'Demo Academy <onboarding@resend.dev>', to: [s.email], subject: copy.subject, html, text },\n    },\n    whatsapp,\n  },\n}];\n"
+      },
+      "id": "a2",
+      "name": "Verify, dedupe & compose",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 3,
+        "output": "={{ $json.status === 'invalid' ? 0 : $json.status === 'duplicate' ? 1 : 2 }}"
+      },
+      "id": "a3",
+      "name": "Route by status",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, error: $json.reason }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "a4",
+      "name": "Reject (401)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, duplicate: true }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a5",
+      "name": "Already handled (200)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, accepted: true, type: $json.type, email: $json.email.mode, whatsapp: $json.whatsapp.send }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a6",
+      "name": "Accepted (200)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 3,
+        "output": "={{ $json.email.mode === 'resend' ? 0 : $json.email.mode === 'dry_run' ? 1 : 2 }}"
+      },
+      "id": "a7",
+      "name": "Email provider?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        960,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.RESEND_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.email.request) }}",
+        "options": {}
+      },
+      "id": "a8",
+      "name": "Send email (Resend)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        320
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {},
+      "id": "a9",
+      "name": "Dry run: email composed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        480
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "a10",
+      "name": "Nothing to send",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 2,
+        "output": "={{ $json.whatsapp.send ? 0 : 1 }}"
+      },
+      "id": "a11",
+      "name": "WhatsApp?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        960,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "specificTime",
+        "dateTime": "={{ $json.whatsapp.sendAt }}"
+      },
+      "id": "a12",
+      "name": "Wait for daytime (quiet hours)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        780
+      ],
+      "webhookId": "6f1e4f6e-9b1c-4a52-9d31-acad0e000002"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.WHATSAPP_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.whatsapp.request) }}",
+        "options": {}
+      },
+      "id": "a13",
+      "name": "Send WhatsApp (Cloud API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        780
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {},
+      "id": "a14",
+      "name": "No WhatsApp",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        940
+      ]
+    }
+  ],
+  "connections": {
+    "Academy event (webhook)": {
+      "main": [
+        [
+          {
+            "node": "Verify, dedupe & compose",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify, dedupe & compose": {
+      "main": [
+        [
+          {
+            "node": "Route by status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by status": {
+      "main": [
+        [
+          {
+            "node": "Reject (401)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Already handled (200)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Accepted (200)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accepted (200)": {
+      "main": [
+        [
+          {
+            "node": "Email provider?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "WhatsApp?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email provider?": {
+      "main": [
+        [
+          {
+            "node": "Send email (Resend)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Dry run: email composed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Nothing to send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp?": {
+      "main": [
+        [
+          {
+            "node": "Wait for daytime (quiet hours)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for daytime (quiet hours)": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp (Cloud API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "acadErrorAlert01",
+    "saveDataSuccessExecution": "all"
+  },
+  "pinData": {}
+}
