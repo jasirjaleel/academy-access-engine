@@ -22,21 +22,40 @@ type Crumb = { label: string; href?: string };
 function crumbsFor(pathname: string, data: SidebarData): Crumb[] {
   const home: Crumb = { label: "Home", href: "/dashboard" };
   if (pathname === "/dashboard") return [{ label: "Home" }];
-  if (pathname.startsWith("/dashboard/billing")) return [home, { label: "Billing" }];
-  if (pathname.startsWith("/dashboard/plans")) return [home, { label: "Plans & upgrades" }];
+  if (pathname.startsWith("/dashboard/billing"))
+    return [home, { label: "Billing" }];
+  if (pathname.startsWith("/dashboard/plans"))
+    return [home, { label: "Plans & upgrades" }];
   const prog = pathname.match(/^\/dashboard\/programmes\/([^/]+)/);
-  if (prog) return [home, { label: data.programmes.find((p) => p.slug === prog[1])?.titleEn ?? "Programme" }];
+  if (prog)
+    return [
+      home,
+      {
+        label:
+          data.programmes.find((p) => p.slug === prog[1])?.titleEn ??
+          "Programme",
+      },
+    ];
   const lesson = pathname.match(/^\/dashboard\/lessons\/([^/]+)/);
   if (lesson) {
-    const p = data.programmes.find((x) => x.lessons.some((l) => l.id === lesson[1]));
+    const p = data.programmes.find((x) =>
+      x.lessons.some((l) => l.id === lesson[1]),
+    );
     const l = p?.lessons.find((x) => x.id === lesson[1]);
     return p && l
-      ? [home, { label: p.titleEn, href: `/dashboard/programmes/${p.slug}` }, { label: `${l.position}. ${l.titleEn}` }]
+      ? [
+          home,
+          { label: p.titleEn, href: `/dashboard/programmes/${p.slug}` },
+          { label: `${l.position}. ${l.titleEn}` },
+        ]
       : [home, { label: "Lesson" }];
   }
   if (pathname.startsWith("/admin")) {
     const section = pathname.split("/")[2];
-    const name = section ? section[0].toUpperCase() + section.slice(1) : "Overview";
+    const names: Record<string, string> = { outbox: "Messages" };
+    const name = section
+      ? (names[section] ?? section[0].toUpperCase() + section.slice(1))
+      : "Overview";
     return [{ label: "Admin", href: "/admin" }, { label: name }];
   }
   return [home];
@@ -54,14 +73,25 @@ export function TopBar({ data }: { data: SidebarData }) {
         <BreadcrumbList className="flex-nowrap">
           {crumbs.map((c, i) => (
             <Fragment key={`${c.label}-${i}`}>
-              {i > 0 ? <BreadcrumbSeparator className="text-slate-600" /> : null}
-              <BreadcrumbItem className={i < crumbs.length - 1 ? "hidden sm:inline-flex" : "min-w-0"}>
+              {i > 0 ? (
+                <BreadcrumbSeparator className="text-slate-600" />
+              ) : null}
+              <BreadcrumbItem
+                className={
+                  i < crumbs.length - 1 ? "hidden sm:inline-flex" : "min-w-0"
+                }
+              >
                 {c.href && i < crumbs.length - 1 ? (
-                  <BreadcrumbLink asChild className="text-slate-400 hover:text-white">
+                  <BreadcrumbLink
+                    asChild
+                    className="text-slate-400 hover:text-white"
+                  >
                     <Link href={c.href}>{c.label}</Link>
                   </BreadcrumbLink>
                 ) : (
-                  <BreadcrumbPage className="truncate font-medium text-white">{c.label}</BreadcrumbPage>
+                  <BreadcrumbPage className="truncate font-medium text-white">
+                    {c.label}
+                  </BreadcrumbPage>
                 )}
               </BreadcrumbItem>
             </Fragment>
@@ -83,7 +113,9 @@ export function TopBar({ data }: { data: SidebarData }) {
       >
         <Search className="size-4" />
         <span className="hidden md:inline">Search</span>
-        <kbd className="hidden rounded bg-white/10 px-1.5 text-[10px] font-semibold text-slate-300 md:inline">⌘K</kbd>
+        <kbd className="hidden rounded bg-white/10 px-1.5 text-[10px] font-semibold text-slate-300 md:inline">
+          ⌘K
+        </kbd>
       </button>
     </header>
   );
