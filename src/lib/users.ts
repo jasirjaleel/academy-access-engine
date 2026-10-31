@@ -1,33 +1,9 @@
 import "server-only";
-import type { UserJSON } from "@clerk/nextjs/server";
-import { currentUser } from "@clerk/nextjs/server";
 import { eq, sql } from "drizzle-orm";
+import { z } from "zod";
 import { users, type User } from "@/db/schema";
 import type { Database } from "@/db/types";
-
-function fullName(first: string | null | undefined, last: string | null | undefined) {
-  return [first, last].filter(Boolean).join(" ") || null;
-}
-
-export async function upsertUserFromClerk(db: Database, data: UserJSON) {
-  const primary =
-    data.email_addresses.find((e) => e.id === data.primary_email_address_id) ??
-    data.email_addresses[0];
-  if (!primary) throw new Error(`Clerk user ${data.id} has no email address`);
-
-  const values = {
-    id: data.id,
-    email: primary.email_address,
-    name: fullName(data.first_name, data.last_name),
-  };
-  await db
-    .insert(users)
-    .values(values)
-    .onConflictDoUpdate({
-      target: users.id,
-      set: { email: values.email, name: values.name, updatedAt: sql`now()` },
-    });
-}
+import { getAuthUser } from "./auth";
 
 /** D8: keep the row for billing history, wipe personal data. */
 export async function anonymizeUser(db: Database, userId: string) {
@@ -43,21 +19,24 @@ export async function anonymizeUser(db: Database, userId: string) {
     .where(eq(users.id, userId));
 }
 
-/** For pages: the webhook may not have arrived yet right after sign-up. */
-export async function getOrCreateUser(db: Database): Promise<User | null> {
-  const clerkUser = await currentUser();
-  if (!clerkUser) return null;
+// user_metadata is editable by the user, so the name is checked like any other input.
+const fullNameSchema = z.string().trim().max(100).catch("");
 
-  const existing = await db.query.users.findFirst({ where: eq(users.id, clerkUser.id) });
+/** Our row for the signed-in user, created on their first page load after sign-up. */
+export async function getOrCreateUser(db: Database): Promise<User | null> {
+  const authUser = await getAuthUser();
+  if (!authUser) return null;
+
+  const existing = await db.query.users.findFirst({ where: eq(users.id, authUser.id) });
   if (existing) return existing;
 
-  const email = clerkUser.primaryEmailAddress?.emailAddress ?? clerkUser.emailAddresses[0]?.emailAddress;
-  if (!email) throw new Error(`Clerk user ${clerkUser.id} has no email address`);
+  if (!authUser.email) throw new Error(`Auth user ${authUser.id} has no email address`);
+  const fullName = fullNameSchema.parse(authUser.user_metadata?.full_name) || null;
 
   const [created] = await db
     .insert(users)
-    .values({ id: clerkUser.id, email, name: fullName(clerkUser.firstName, clerkUser.lastName) })
+    .values({ id: authUser.id, email: authUser.email, name: fullName })
     .onConflictDoNothing()
     .returning();
-  return created ?? (await db.query.users.findFirst({ where: eq(users.id, clerkUser.id) })) ?? null;
+  return created ?? (await db.query.users.findFirst({ where: eq(users.id, authUser.id) })) ?? null;
 }

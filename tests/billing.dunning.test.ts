@@ -112,3 +112,32 @@ describe("failed payment → grace → recovery / expiry", () => {
     expect((await eventTypes(db)).filter((t) => t === "payment.failed")).toHaveLength(1);
   });
 });
+
+describe("events delivered after the renewal already failed", () => {
+  it("starts access in grace instead of locking the student out", async () => {
+    const db = await createTestDb();
+    await seedBasics(db);
+    // Every re-fetch already sees past_due, so checkout/subscription events grant nothing.
+    const subs = { sub_1: subscription({ status: "past_due" }) };
+    const deps = fakeDeps(subs);
+    await process(db, stripeEvent("evt_checkout", "checkout.session.completed", checkoutSession()), deps);
+    expect(await arabic(db)).toBeUndefined();
+
+    await process(db, stripeEvent("evt_fail_1", "invoice.payment_failed", invoice({ attempt: 1 })), deps);
+    const e = await arabic(db);
+    expect(e?.status).toBe("grace");
+    expect(e?.graceUntil?.getTime()).toBe(NOW.getTime() + GRACE_DAYS * DAY);
+  });
+
+  it("does not bring back access that was already revoked", async () => {
+    const db = await createTestDb();
+    await seedBasics(db);
+    const subs = { sub_1: subscription({ status: "active" }) };
+    await process(db, stripeEvent("evt_checkout", "checkout.session.completed", checkoutSession()), fakeDeps(subs));
+    subs.sub_1 = subscription({ status: "canceled" });
+    await process(db, stripeEvent("evt_del", "customer.subscription.deleted", subs.sub_1), fakeDeps(subs));
+
+    await process(db, stripeEvent("evt_fail_1", "invoice.payment_failed", invoice({ attempt: 1 })), fakeDeps(subs));
+    expect((await arabic(db))?.status).toBe("revoked");
+  });
+});

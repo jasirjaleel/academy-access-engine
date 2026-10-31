@@ -1,10 +1,8 @@
-import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Inter, Noto_Naskh_Arabic } from "next/font/google";
 import { BackgroundPattern } from "@/components/background-pattern";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
-import { clerkAppearance } from "@/lib/clerk-appearance";
 import "./globals.css";
 
 const inter = Inter({
@@ -34,11 +32,9 @@ export default function RootLayout({
       className={`dark ${inter.variable} ${naskh.variable} h-full antialiased`}
     >
       <body className="relative flex min-h-full flex-col font-sans">
-        <ClerkProvider appearance={clerkAppearance}>
-          <BackgroundPattern />
-          <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
-          <Toaster />
-        </ClerkProvider>
+        <BackgroundPattern />
+        <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+        <Toaster />
       </body>
     </html>
   );

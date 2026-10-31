@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth";
 import { and, asc, eq } from "drizzle-orm";
 import { CheckCircle2, Lock, PlayCircle } from "lucide-react";
 import Link from "next/link";
@@ -11,7 +11,7 @@ import type { ProgrammeSlug } from "@/lib/catalogue";
 
 export default async function ProgrammePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const { userId } = await auth();
+  const userId = await getUserId();
   if (!userId) notFound();
 
   const programme = await db.query.programmes.findFirst({ where: eq(programmes.slug, slug) });

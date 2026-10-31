@@ -1,11 +1,12 @@
 "use server";
 
-import { auth, clerkClient } from "@clerk/nextjs/server";
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { getUserId } from "@/lib/auth";
+import { createSupabaseServer } from "@/lib/supabase/server";
 
 const nameSchema = z.object({
   firstName: z.string().trim().min(1, "Please enter your first name.").max(50),
@@ -15,7 +16,7 @@ const nameSchema = z.object({
 export type SaveNameState = { error?: string } | undefined;
 
 export async function saveNameAction(_prev: SaveNameState, formData: FormData): Promise<SaveNameState> {
-  const { userId } = await auth();
+  const userId = await getUserId();
   if (!userId) return { error: "Please sign in again." };
 
   const parsed = nameSchema.safeParse({
@@ -25,12 +26,13 @@ export async function saveNameAction(_prev: SaveNameState, formData: FormData): 
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check your name." };
   const { firstName, lastName } = parsed.data;
 
-  // Clerk is the source of truth; keep our copy in step (the user.updated webhook does the same once deployed).
-  const client = await clerkClient();
-  await client.users.updateUser(userId, { firstName, lastName: lastName || undefined });
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+  // Keep the auth profile and our row in step.
+  const supabase = await createSupabaseServer();
+  await supabase.auth.updateUser({ data: { full_name: fullName } });
   await db
     .update(users)
-    .set({ name: [firstName, lastName].filter(Boolean).join(" "), updatedAt: sql`now()` })
+    .set({ name: fullName, updatedAt: sql`now()` })
     .where(eq(users.id, userId));
 
   revalidatePath("/dashboard");

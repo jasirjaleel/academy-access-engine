@@ -153,6 +153,8 @@ export async function getAdminDashboard(
       revenue: dayRevenue(key) / 100,
       monthly: dayRevenue(key, "monthly") / 100,
       lifetime: dayRevenue(key, "lifetime") / 100,
+      // MRR at that moment of the day (today: right now).
+      mrr: mrrAt(day) / 100,
       signups: students.filter((u) => dayKey(u.createdAt) === key).length,
       learners: dayLearners(key).length,
       // Ids let the chart count UNIQUE learners over 7/15/30 days (a daily sum would double-count).
@@ -211,6 +213,41 @@ export async function getAdminDashboard(
       };
     })
     .sort((a, b) => b.done - a.done || b.joined.getTime() - a.joined.getTime());
+
+  // Students who need a person to act, most urgent first.
+  const nameOf = new Map(students.map((u) => [u.id, u.name ?? u.email.split("@")[0]]));
+  const attention: { userId: string; name: string; kind: "payment_failed" | "cancelling" | "quiet"; detail: string; at: Date | null }[] = [];
+  // One row per student: a failed payment outranks a pending cancellation, which outranks going quiet.
+  const flagged = new Set<string>();
+  for (const e of entRows)
+    if (e.source === "subscription" && e.status === "grace" && e.graceUntil && e.graceUntil > now && !flagged.has(e.userId)) {
+      flagged.add(e.userId);
+      const inv = invRows.find((i) => i.subscriptionId === e.sourceRef && i.firstFailedAt && i.status !== "paid");
+      attention.push({
+        userId: e.userId,
+        name: nameOf.get(e.userId) ?? "Student",
+        kind: "payment_failed",
+        detail: `${inv ? `$${(inv.amountDue / 100).toFixed(2)} renewal failed · ` : ""}access ends`,
+        at: e.graceUntil,
+      });
+    }
+  for (const s of subRows)
+    if (s.cancelAtPeriodEnd && s.status !== "canceled" && !flagged.has(s.userId)) {
+      flagged.add(s.userId);
+      attention.push({ userId: s.userId, name: nameOf.get(s.userId) ?? "Student", kind: "cancelling", detail: "Cancels on", at: s.currentPeriodEnd });
+    }
+  for (const s of studentRows)
+    if (s.status === "active" && !flagged.has(s.id)) {
+      const idle = s.lastActive ? Math.floor((now.getTime() - s.lastActive.getTime()) / DAY) : null;
+      if (idle === null || idle >= 7)
+        attention.push({
+          userId: s.id,
+          name: s.name,
+          kind: "quiet",
+          detail: idle === null ? "Paying, no lessons started yet" : `Paying, no lessons for ${idle} days`,
+          at: null,
+        });
+    }
 
   const mix = { lifetime: 0, monthly: 0, none: 0 };
   for (const s of studentRows) {
@@ -281,6 +318,7 @@ export async function getAdminDashboard(
       },
     },
     series,
+    attention,
     mix,
     students: studentRows,
     status: {

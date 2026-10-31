@@ -4,7 +4,7 @@ import type { Database } from "@/db/types";
 
 export type HandlerResult = "applied" | "ignored";
 
-type EventMeta = { id: string; provider: "stripe" | "clerk"; type: string };
+type EventMeta = { id: string; provider: "stripe"; type: string };
 
 /**
  * Runs `fn` at most once per event id (see docs/DECISIONS.md D2).

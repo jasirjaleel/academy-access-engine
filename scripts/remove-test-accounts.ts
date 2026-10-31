@@ -1,9 +1,9 @@
 // Removes old manual test accounts (and everything they own) from the app database.
 // Dry run by default: lists what would be deleted. Add --confirm to delete.
 // Usage:
-//   npx tsx scripts/remove-test-accounts.ts test1+clerk_test@example.com test1@gmail.com
-//   npx tsx scripts/remove-test-accounts.ts test1+clerk_test@example.com test1@gmail.com --confirm
-// Delete the same people in Clerk (Dashboard → Users) yourself; this only touches our database.
+//   npx tsx scripts/remove-test-accounts.ts old-test@example.com
+//   npx tsx scripts/remove-test-accounts.ts old-test@example.com --confirm
+// Delete the same people in Supabase (Authentication → Users) yourself; this only touches our tables.
 import { config } from "dotenv";
 import { inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";

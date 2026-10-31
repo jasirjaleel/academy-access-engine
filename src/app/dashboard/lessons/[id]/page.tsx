@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth";
 import { and, asc, eq } from "drizzle-orm";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -15,7 +15,7 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
 
-  const { userId } = await auth();
+  const userId = await getUserId();
   const check = await canWatchLesson(db, userId, id);
   if (!check) notFound();
   const { lesson, programme, allowed } = check;

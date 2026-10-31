@@ -35,7 +35,7 @@ export const outboundStatus = pgEnum("outbound_status", [
 ]);
 
 export const users = pgTable("users", {
-  id: text("id").primaryKey(), // Clerk user id
+  id: text("id").primaryKey(), // Supabase auth user id
   email: text("email").notNull(),
   name: text("name"),
   stripeCustomerId: text("stripe_customer_id").unique(),
@@ -168,7 +168,7 @@ export const cancellationFeedback = pgTable("cancellation_feedback", {
 
 // Webhook idempotency + admin log.
 export const processedEvents = pgTable("processed_events", {
-  id: text("id").primaryKey(), // Stripe / Clerk event id
+  id: text("id").primaryKey(), // Stripe event id
   provider: text("provider").notNull(),
   type: text("type").notNull(),
   receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),

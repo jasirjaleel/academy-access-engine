@@ -22,7 +22,7 @@ Regional pricing: a Stripe coupon `REGION40` (40% off, promotion codes enabled a
 ## Tables (`src/db/schema.ts`)
 ```
 users
-  id                 text PK            -- Clerk user id
+  id                 text PK            -- Supabase Auth user id (D17)
   email              text not null
   name               text
   stripe_customer_id text unique
@@ -78,8 +78,8 @@ cancellation_feedback
   offer_shown text null, offer_accepted boolean, created_at
 
 processed_events                    -- webhook idempotency + admin log
-  id           text PK              -- Stripe/Clerk event id
-  provider     text                 -- 'stripe' | 'clerk'
+  id           text PK              -- Stripe event id
+  provider     text                 -- 'stripe' (older rows may say 'clerk')
   type         text
   received_at  timestamptz
   result       text                 -- 'applied' | 'ignored' | 'error'
@@ -110,7 +110,7 @@ The `usool` bundle entitlement (`source = 'bundle'`) exists while the user has *
 | `checkout.session.completed` (mode=payment, lifetime) | upsert 3 entitlements, source=lifetime, active; enqueue `student.enrolled` |
 | `checkout.session.completed` (mode=subscription) | re-fetch the subscription → upsert `subscriptions` + entitlement source=subscription, active; enqueue `student.enrolled` |
 | `customer.subscription.updated` | re-fetch → mirror; if `cancel_at_period_end` became true, enqueue `subscription.cancel_scheduled` |
-| `invoice.payment_failed` | upsert invoice (`first_failed_at` if empty); entitlement → `grace`, `grace_until = first_failed_at + 7d`; enqueue `payment.failed` (dedupe per invoice + attempt) |
+| `invoice.payment_failed` | upsert invoice (`first_failed_at` if empty); entitlement → `grace`, `grace_until = first_failed_at + 7d` (if the event arrives before access was ever granted, the entitlement is created in `grace`); enqueue `payment.failed` (dedupe per invoice + attempt) |
 | `invoice.paid` | invoice paid; if it had failed before → entitlement `active`, clear grace, enqueue `payment.recovered` |
 | `customer.subscription.deleted` | entitlement `revoked` (reason `canceled`, or `payment_failed` if it was in grace); enqueue `subscription.ended` |
 | `charge.refunded` (full refund) | revoke entitlements with that source_ref, reason `refunded` |
@@ -154,4 +154,4 @@ GA4_MEASUREMENT_ID=
 GA4_API_SECRET=
 ```
 
-Admin role: Clerk `publicMetadata.role === 'admin'`, checked server-side in `src/app/admin/layout.tsx`.
+Admin role: Supabase `app_metadata.role === 'admin'` (only the secret key can set it), checked server-side by `requireAdmin()` in `src/app/admin/layout.tsx`, every admin page and every admin server action.

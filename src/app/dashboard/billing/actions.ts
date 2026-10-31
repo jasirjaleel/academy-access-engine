@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -21,7 +21,7 @@ const input = z.object({
 
 /** The subscription must belong to the signed-in student. */
 async function ownedSubscription(subscriptionId: string) {
-  const { userId } = await auth();
+  const userId = await getUserId();
   if (!userId) throw new Error("Not signed in");
   const sub = await db.query.subscriptions.findFirst({
     where: and(eq(subscriptions.id, subscriptionId), eq(subscriptions.userId, userId)),

@@ -1,4 +1,5 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { getAuthUser } from "@/lib/auth";
+import { isAdmin as hasAdminRole } from "@/lib/roles";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -29,11 +30,11 @@ export async function AppShell({
   const user = await getOrCreateUser(db);
   if (!user) redirect("/sign-in");
 
-  const [clerkUser, cookieStore] = await Promise.all([
-    currentUser(),
+  const [authUser, cookieStore] = await Promise.all([
+    getAuthUser(),
     cookies(),
   ]);
-  const isAdmin = clerkUser?.publicMetadata.role === "admin";
+  const isAdmin = hasAdminRole(authUser);
   // Admins only see the admin workspace.
   if (mode === "student" && isAdmin) redirect("/admin");
 

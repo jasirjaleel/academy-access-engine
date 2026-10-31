@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth";
 import { z } from "zod";
 import { db } from "@/db";
 import { getProgrammeAccess } from "@/lib/access";
@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 const body = z.object({ productKey: z.enum(PRODUCT_KEYS) });
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
+  const userId = await getUserId();
   if (!userId) return Response.json({ error: "Please sign in first." }, { status: 401 });
 
   const parsed = body.safeParse(await req.json().catch(() => null));

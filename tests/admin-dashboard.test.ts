@@ -68,6 +68,25 @@ describe("getAdminDashboard", () => {
   });
 
 
+  it("tracks MRR per day and lists students who need attention", async () => {
+    const d = await getAdminDashboard(db, NOW);
+    expect(d.series[0].mrr).toBe(30); // only u_sub 29 days ago
+    expect(d.series.at(-1)?.mrr).toBe(45); // u_grace joined 5 days ago
+    expect(d.attention.map((a) => [a.userId, a.kind])).toEqual([
+      ["u_grace", "payment_failed"],
+      ["u_sub", "cancelling"],
+    ]);
+    expect(d.attention[0].at).toEqual(new Date(NOW.getTime() + 2 * DAY));
+    // u_life studied 2 days ago, so it is not "gone quiet"; a paying student with no lessons is.
+    await db.insert(users).values({ id: "u_idle", email: "idle@x.test", name: "Idle", createdAt: ago(3) });
+    await db.insert(entitlements).values({
+      userId: "u_idle", programmeId: ids.arabic, source: "lifetime", sourceRef: "pi_idle", status: "active", createdAt: ago(3),
+    });
+    const again = await getAdminDashboard(db, NOW);
+    expect(again.attention.find((a) => a.userId === "u_idle")?.kind).toBe("quiet");
+    expect(again.attention.some((a) => a.userId === "u_life")).toBe(false);
+  });
+
   it("computes MRR from live subscriptions and counts unique learners", async () => {
     const d = await getAdminDashboard(db, NOW);
     // u_sub Arabic $30 (cancelling, still live) + u_grace Precision $15 (in grace) ; lifetime not recurring

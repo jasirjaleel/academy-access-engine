@@ -1,9 +1,10 @@
 import "server-only";
-import { clerkClient } from "@clerk/nextjs/server";
+import { isAdmin } from "./roles";
+import { createSupabaseAdmin } from "./supabase/admin";
 
-/** Clerk users with publicMetadata.role === "admin" (staff, not students). */
+/** Auth users with app_metadata.role === "admin" (staff, not students). */
 export async function getAdminUserIds(): Promise<string[]> {
-  const client = await clerkClient();
-  const { data } = await client.users.getUserList({ limit: 500 });
-  return data.filter((u) => u.publicMetadata.role === "admin").map((u) => u.id);
+  const { data, error } = await createSupabaseAdmin().auth.admin.listUsers({ perPage: 1000 });
+  if (error) throw error;
+  return data.users.filter(isAdmin).map((u) => u.id);
 }

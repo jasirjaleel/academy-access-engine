@@ -38,7 +38,8 @@ Add one entry for every non-obvious choice: what, why, and what was rejected. Th
 **Why:** every dashboard page is personal to the student (auth + entitlements), so component caching adds Suspense requirements with no benefit for this app.
 
 ### D8: Anonymise on user deletion
-**What:** on Clerk `user.deleted`, personal fields (email, name, WhatsApp) are wiped but the row stays.
+**What:** when a student is deleted, personal fields (email, name, WhatsApp) are wiped but the row stays (`anonymizeUser` in `src/lib/users.ts`).
+**Status:** this used to run on Clerk's `user.deleted` webhook. Supabase Auth (D17) has no such webhook, so nothing triggers it yet; production needs an admin "delete student" action (or a Supabase auth hook) that calls it.
 **Why:** billing and invoice history must stay consistent, while the student's personal data is removed.
 
 ### D9: Product comes from the price ID, not from metadata
@@ -63,8 +64,17 @@ Add one entry for every non-obvious choice: what, why, and what was rejected. Th
 
 ### D15: Session pooler for the app, plus connection timeouts
 **What:** `DATABASE_URL` uses Supabase's session pooler (5432). The client recycles idle (20 s) and old (10 min) connections.
-**Why:** while testing M6 locally, page renders hung with Postgres sessions "active / ClientRead" (the database waiting for the app mid-query) on the transaction pooler, while a server action, a router refresh and a webhook transaction overlapped. On the session pooler, repeated cancel/keep/pause cycles ran cleanly. For a small app the session pooler's connection limit is not a constraint.
+**Why:** while testing M6 locally, page renders hung with Postgres sessions "active / ClientRead" (the database waiting for the app mid-query) on the transaction pooler, while a server action, a router refresh and a webhook transaction overlapped. On the session pooler, repeated cancel/keep/pause cycles ran cleanly. Its limit (15 clients) did bite once: a demo seed advanced 18 Stripe test clocks, the webhook burst spun up several Vercel instances with 5 connections each, and new connections were refused. So each Vercel instance now uses one connection (`max: 1`), and the seed holds at most two.
 
 ### D16: Outbox → signed webhook → n8n, de-duplicated on both sides
 **What:** the app sends each outbox row to one n8n webhook, signed with HMAC-SHA256 over `timestamp.body`, right after the response (`after()`) and again from a daily cron. Rows are claimed with `FOR UPDATE SKIP LOCKED` and a 2-minute lease; failures back off 5m → 30m → 2h → 12h and stop after 5 attempts. n8n rejects bad or stale signatures, remembers each `dedupeKey` for 30 days, and sends email (Resend). WhatsApp was dropped for now because Meta charges for business-initiated messages. Workflow failures trigger a separate error-alert workflow.
 **Why:** the app owns *what happened* (reliably, inside the same transaction as the change); n8n owns *how to tell the student*, so the copy and channels can change without a deploy. The workflows need no server settings (the secret sits in n8n's Crypto node, the Resend key is an n8n credential), so they can run on a shared n8n instance without a restart. Delivery is at-least-once, so both sides de-duplicate. Personal data is added at send time and never stored in the outbox.
+
+### D17: Supabase Auth instead of Clerk
+**What:** login is email + password on Supabase Auth (`@supabase/ssr`, cookie sessions refreshed in `src/proxy.ts`). Our `users` row is created on the first signed-in page load (`getOrCreateUser`), so no auth webhook is needed. Admins have `app_metadata.role = "admin"`, which only the secret key can set. Email confirmation is off for now. Every server check uses `auth.getUser()`, which asks Supabase to verify the session rather than trusting the cookie.
+**Why:** one system for logins and data, no third-party user store to keep in step, and demo accounts can be created from a script (`auth.admin.createUser`). The browser only ever gets the publishable key, and RLS with no policies (D12) means that key can't read our tables. `user_metadata` is editable by the user, so it is never used for roles.
+
+### D18: Demo data is real Stripe test-mode history
+**What:** `scripts/seed-demo.ts` gives each demo student a Stripe test clock starting on their join date, a customer, a card and a subscription or a lifetime invoice, then advances the clock to now. Stripe bills the renewals, declines Maryam's renewal, recovers one failed payment after a card change, schedules a cancellation and refunds one lifetime buyer. The script then reads those events back from Stripe and runs each one through the same handlers and idempotency guard as the webhook, so it doesn't depend on delivery timing; the webhook's own copies arrive later and are skipped as duplicates. Lifetime access is granted through `handleCheckoutCompleted`, because a script can't click through Checkout. Afterwards the script copies Stripe's own timestamps onto the mirrored rows.
+**Why:** the admin dashboard and the Stripe dashboard must tell the same story. Writing payments straight into the database looked fine until someone compared the two. Stripe deletes test clocks after about 30 days, so the seed is re-run before a demo.
+

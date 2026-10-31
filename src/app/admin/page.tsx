@@ -4,8 +4,6 @@ import {
   CreditCard,
   ExternalLink,
   Info,
-  RotateCw,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { OverviewChart } from "@/components/admin/overview-chart";
@@ -39,11 +37,28 @@ function Delta({ change }: { change: number | null }) {
         up ? "text-emerald-300" : "text-red-300",
       )}
     >
-      {up ? "+" : ""}
-      {change > 999 ? ">999" : change}% <Icon className="size-3.5" />
+      {/* Doubling and more reads better as a multiple than as "+1311%". */}
+      {change >= 100
+        ? `${((change + 100) / 100).toFixed(1)}×`
+        : `${up ? "+" : ""}${change}%`}{" "}
+      <Icon className="size-3.5" />
     </span>
   );
 }
+
+const attentionLabel = {
+  payment_failed: "payment failed",
+  cancelling: "cancelling",
+  quiet: "gone quiet",
+} as const;
+const attentionTone = {
+  payment_failed: "bg-red-400",
+  cancelling: "bg-amber",
+  quiet: "bg-slate-500",
+} as const;
+
+/** "1 invoice", "2 invoices". */
+const count = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 function Kpi({
   label,
@@ -179,7 +194,7 @@ export default async function AdminOverviewPage() {
           label="MRR"
           value={formatMoney(kpis.mrr.cents)}
           delta={<Delta change={kpis.mrr.change} />}
-          hint={`${kpis.mrr.subscriptions} monthly subscription(s) · vs 30 days ago`}
+          hint={`${count(kpis.mrr.subscriptions, "monthly subscription")} · vs 30 days ago`}
           info="Monthly Recurring Revenue: what all live monthly subscriptions bring in every month if nothing changes. Lifetime purchases are one-off, so they are not included."
         />
         <Kpi
@@ -193,14 +208,14 @@ export default async function AdminOverviewPage() {
           label="Revenue at risk"
           value={formatMoney(kpis.atRisk.cents)}
           tone={kpis.atRisk.cents > 0 ? "warn" : undefined}
-          hint={`${kpis.atRisk.invoices} unpaid invoice(s) in grace`}
+          hint={`${count(kpis.atRisk.invoices, "unpaid invoice")} in grace`}
           info="Monthly payments that failed and are still unpaid. These students keep access for 7 days while we remind them to update their card."
         />
         <Kpi
           label="Recovered (30 days)"
           value={formatMoney(kpis.recovered30d.cents)}
           tone={kpis.recovered30d.cents > 0 ? "good" : undefined}
-          hint={`${kpis.recovered30d.invoices} payment(s) saved after failing`}
+          hint={`${count(kpis.recovered30d.invoices, "payment")} saved after failing`}
           info="Payments that failed at first but were paid later (card updated or retry worked): money the reminders won back."
         />
       </div>
@@ -216,7 +231,7 @@ export default async function AdminOverviewPage() {
               <StatusRow
                 ok={status.webhookErrors24h === 0}
                 label="Stripe webhooks"
-                detail={`${status.webhooks24h} in 24 h · ${status.webhookErrors24h} errors`}
+                detail={`${status.webhooks24h} in 24 h · ${count(status.webhookErrors24h, "error")}`}
               />
               <StatusRow
                 ok={status.outboxFailed === 0}
@@ -230,42 +245,68 @@ export default async function AdminOverviewPage() {
               />
               <StatusRow ok label="Last webhook" detail={lastHook} />
             </div>
-          </div>
-          <div className="rounded-2xl bg-midnight-2/80 p-5 ring-1 ring-white/10">
-            <h2 className="text-lg font-bold text-white">Quick actions</h2>
-            <div className="mt-3 flex flex-col gap-2">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
               {status.outboxFailed > 0 ? (
                 <RetryButton
                   target="all-failed"
                   label="Retry failed messages"
                 />
-              ) : (
-                <p className="flex items-center gap-2 text-sm text-slate-400">
-                  <RotateCw className="size-4" /> No failed messages to retry
-                </p>
-              )}
-              <Link
-                href="/admin/payments"
-                className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
-              >
-                <CreditCard className="size-4 text-amber" /> Review failed
-                payments
-              </Link>
-              <Link
-                href="/admin/students"
-                className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
-              >
-                <Users className="size-4 text-amber" /> All students
-              </Link>
+              ) : null}
               <a
                 href="https://dashboard.stripe.com/test/dashboard"
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+                className="inline-flex items-center gap-1.5 text-sm text-amber hover:underline"
               >
-                <ExternalLink className="size-4 text-amber" /> Stripe dashboard
-                (test)
+                <ExternalLink className="size-4" /> Stripe dashboard (test)
               </a>
+            </div>
+          </div>
+          <div className="rounded-2xl bg-midnight-2/80 p-5 ring-1 ring-white/10">
+            <h2 className="text-lg font-bold text-white">Plan mix</h2>
+            <p className="text-sm text-slate-400">All students</p>
+            <div className="mt-4 space-y-3">
+              {[
+                {
+                  label: "Lifetime",
+                  n: mix.lifetime,
+                  bar: "from-amber to-amber/50",
+                },
+                {
+                  label: "Monthly",
+                  n: mix.monthly,
+                  bar: "from-dusk to-dusk/40",
+                },
+                {
+                  label: "No plan",
+                  n: mix.none,
+                  bar: "from-slate-500 to-slate-600",
+                },
+              ].map((m) => {
+                const pct = Math.round((m.n / mixTotal) * 100);
+                return (
+                  <div key={m.label}>
+                    <div className="mb-1 flex justify-between text-sm">
+                      <span className="text-slate-300">
+                        {m.label}{" "}
+                        <span className="text-slate-500">· {m.n}</span>
+                      </span>
+                      <span className="font-semibold tabular-nums text-white">
+                        {pct}%
+                      </span>
+                    </div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-white/5">
+                      <div
+                        className={cn(
+                          "h-full rounded-full bg-gradient-to-r",
+                          m.bar,
+                        )}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -288,46 +329,49 @@ export default async function AdminOverviewPage() {
         </div>
 
         <div className="rounded-2xl bg-midnight-2/80 p-5 ring-1 ring-white/10">
-          <h2 className="text-lg font-bold text-white">Plan mix</h2>
-          <p className="text-sm text-slate-400">All students</p>
-          <div className="mt-4 space-y-3">
-            {[
-              {
-                label: "Lifetime",
-                n: mix.lifetime,
-                bar: "from-amber to-amber/50",
-              },
-              { label: "Monthly", n: mix.monthly, bar: "from-dusk to-dusk/40" },
-              {
-                label: "No plan",
-                n: mix.none,
-                bar: "from-slate-500 to-slate-600",
-              },
-            ].map((m) => {
-              const pct = Math.round((m.n / mixTotal) * 100);
-              return (
-                <div key={m.label}>
-                  <div className="mb-1 flex justify-between text-sm">
-                    <span className="text-slate-300">
-                      {m.label} <span className="text-slate-500">· {m.n}</span>
-                    </span>
-                    <span className="font-semibold tabular-nums text-white">
-                      {pct}%
-                    </span>
+          <h2 className="text-lg font-bold text-white">Needs attention</h2>
+          <p className="text-sm text-slate-400">
+            Students to contact, most urgent first
+          </p>
+          {d.attention.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-400">Nothing right now.</p>
+          ) : (
+            <ul className="mt-3 divide-y divide-white/5">
+              {d.attention.map((a) => (
+                <li
+                  key={`${a.kind}-${a.userId}`}
+                  className="flex items-start gap-3 py-3"
+                >
+                  <span
+                    className={cn(
+                      "mt-1.5 size-2 shrink-0 rounded-full",
+                      attentionTone[a.kind],
+                    )}
+                  />
+                  <div className="min-w-0 text-sm">
+                    <p className="font-medium text-white">
+                      {a.name}{" "}
+                      <span className="font-normal text-slate-500">
+                        · {attentionLabel[a.kind]}
+                      </span>
+                    </p>
+                    <p className="text-slate-400">
+                      {a.detail}
+                      {a.at
+                        ? ` ${a.at.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+                        : ""}
+                    </p>
                   </div>
-                  <div className="h-2.5 overflow-hidden rounded-full bg-white/5">
-                    <div
-                      className={cn(
-                        "h-full rounded-full bg-gradient-to-r",
-                        m.bar,
-                      )}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link
+            href="/admin/payments"
+            className="mt-2 inline-flex items-center gap-1.5 text-sm text-amber hover:underline"
+          >
+            <CreditCard className="size-4" /> Failed payments
+          </Link>
         </div>
       </div>
     </div>

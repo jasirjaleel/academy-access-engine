@@ -1,6 +1,5 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
 import {
   Activity,
   BookOpen,
@@ -11,6 +10,7 @@ import {
   Gift,
   Home,
   LayoutDashboard,
+  LogOut,
   Lock,
   PlayCircle,
   Search,
@@ -21,6 +21,7 @@ import {
   Webhook,
 } from "lucide-react";
 import Link from "next/link";
+import { signOutAction } from "@/app/(marketing)/auth-actions";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import {
@@ -334,8 +335,16 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex items-center gap-3 rounded-xl px-2 py-1.5 group-data-[collapsible=icon]:px-0">
-              <UserButton />
-              <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-amber/15 text-xs font-bold text-amber ring-1 ring-amber/30">
+                {(user.name ?? user.email)
+                  .split(/[\s@]/)
+                  .filter(Boolean)
+                  .map((w) => w[0])
+                  .slice(0, 2)
+                  .join("")
+                  .toUpperCase()}
+              </span>
+              <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
                 <p className="truncate text-sm font-semibold text-white">
                   {user.name ?? "Student"}
                 </p>
@@ -343,6 +352,16 @@ export function AppSidebar({
                   <Activity className="size-3 text-amber" /> {user.plan}
                 </p>
               </div>
+              <form action={signOutAction} className="group-data-[collapsible=icon]:hidden">
+                <button
+                  type="submit"
+                  aria-label="Sign out"
+                  title="Sign out"
+                  className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/5 hover:text-white"
+                >
+                  <LogOut className="size-4" />
+                </button>
+              </form>
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
