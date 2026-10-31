@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth";
 import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -14,7 +14,7 @@ export default async function CheckoutSuccessPage({
 }: {
   searchParams: Promise<{ session_id?: string }>;
 }) {
-  const { userId } = await auth();
+  const userId = await getUserId();
   const { session_id } = await searchParams;
   if (!userId || !session_id) notFound();
 

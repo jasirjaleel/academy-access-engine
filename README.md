@@ -32,8 +32,8 @@ An academy that sells monthly subscriptions and lifetime access has to get a few
 | **Failed payment** | A 7-day **grace period** counted from the *first* failure (retries don't extend it), a banner with "Update your card" (Stripe Billing Portal), automatic restore when paid, and revocation by a daily job when grace runs out. |
 | **Cancellation** | Reason → one tailored offer (30% off the next payment, or a 30-day billing pause) → or cancel at period end. Every answer is recorded, each offer is usable once, and "Keep my plan" undoes it. |
 | **Refunds** | A full refund of a lifetime purchase revokes exactly what it paid for. Partial refunds change nothing. |
-| **Messages** | Every change writes an outbox event in the same transaction. A dispatcher sends it, signed, to **n8n**, which verifies it, drops duplicates and sends email (Resend) or WhatsApp (failed payments only, never at night in the student's timezone). It also nudges students who enrolled 3+ days ago and haven't opened a lesson. |
-| **Admin** | Paying students, students in grace, revenue at risk, revenue recovered (30 days), failed payments, a webhook log, and the outbox with **Retry**. |
+| **Messages** | Every change writes an outbox event in the same transaction. A dispatcher sends it, signed, to **n8n**, which verifies it, drops duplicates and sends the email through Resend. It also nudges students who enrolled 3+ days ago and haven't opened a lesson. |
+| **Admin** | An overview with MRR over time, payments by week, signups and active learners, plus a **Needs attention** list (failed payments, pending cancellations, paying students who've gone quiet). Also paying students, students in grace, revenue at risk, revenue recovered (30 days), failed payments, a webhook log, and the outbox with **Retry**. |
 
 | Pricing | Locked lesson (no video URL sent) |
 |---|---|
@@ -49,13 +49,13 @@ flowchart TB
 
   subgraph app [Next.js app on Vercel]
     pages[Dashboard, pricing,<br/>lessons, billing, admin]
-    hooks[Webhook routes<br/>Stripe + Clerk]
+    hooks[Stripe webhook route]
     lib[Billing handlers,<br/>access rules]
     dispatch[Outbox dispatcher]
     cron[Daily crons:<br/>expire grace, retry outbox]
   end
 
-  clerk[(Clerk<br/>auth)] -- user.* webhooks --> hooks
+  pages -- email + password,<br/>session cookies --> auth[(Supabase Auth)]
   stripe[(Stripe<br/>test mode)] -- signed events --> hooks
   pages -- Checkout / Portal --> stripe
   hooks --> lib
@@ -65,7 +65,6 @@ flowchart TB
   dispatch -- reads due events --> db
   dispatch -- "HMAC-signed POST,<br/>retries with backoff" --> n8n[n8n workflows]
   n8n -- email --> resend[(Resend)]
-  n8n -- WhatsApp, quiet hours --> wa[(WhatsApp Cloud API)]
   n8n -. on failure .-> alert[Error-alert workflow]
 ```
 
@@ -103,7 +102,7 @@ sequenceDiagram
   D->>N: POST event + student email (HMAC over timestamp.body)
   N->>N: verify signature, reject if older than 5 min, drop duplicate dedupeKey
   N-->>D: 200 accepted
-  N->>N: email "Your payment didn't go through" (+ WhatsApp at 08:00 local)
+  N->>N: email "Your payment didn't go through" (Resend)
   Note over S,DB: Student updates card in the Billing Portal → invoice.paid → re-fetch subscription → active, grace cleared, outbox: payment.recovered
 ```
 
@@ -151,18 +150,19 @@ Full reasoning in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## Tech stack
 
-Next.js 16 (App Router, TypeScript strict) · Tailwind CSS v4 + shadcn/ui · Clerk · Supabase Postgres + Drizzle ORM · Stripe (Checkout, Billing Portal, webhooks, test clocks) · n8n · Resend · WhatsApp Cloud API · Vitest + PGlite · GitHub Actions · Vercel
+Next.js 16 (App Router, TypeScript strict) · Tailwind CSS v4 + shadcn/ui · Supabase Auth + Postgres + Drizzle ORM · Stripe (Checkout, Billing Portal, webhooks, test clocks) · n8n · Resend · Vitest + PGlite · GitHub Actions · Vercel
 
 ## Run it locally
 
 ```bash
 npm install
-cp .env.example .env.local            # fill in Supabase, Clerk and Stripe *test* keys
+cp .env.example .env.local            # fill in Supabase and Stripe *test* keys
 npm run db:migrate && npm run db:seed # tables + 3 programmes, 18 lessons
 npx tsx scripts/stripe-setup.ts       # products, prices, coupons, portal config (idempotent)
 stripe listen --events checkout.session.completed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,invoice.paid,invoice.payment_failed,charge.refunded --forward-to localhost:3000/api/webhooks/stripe
 npm run dev
 npm test
+npx tsx scripts/seed-demo.ts           # optional: 20 demo students with real Stripe test-clock history
 ```
 
 The n8n workflows and their setup are in [`n8n/README.md`](n8n/README.md). Live Stripe keys are refused at startup.
@@ -182,7 +182,9 @@ docs/               architecture, decisions, design system, build log
 
 - **Latency:** the database is in Tokyo. From the UAE, each query is about 350 ms, so actions take several seconds locally. In production the Vercel functions should run next to the database (`hnd1`), or the database should move closer.
 - **Alerts use one channel.** If the email provider is what's failing, the email alert can't get out. Production should add Slack or Telegram.
-- **WhatsApp** is wired with quiet hours, but it needs an approved Meta template and wasn't sent live.
+- **No WhatsApp yet.** Meta charges for business-initiated messages, so it was left out. Students' opt-in is still stored, so it can be added as one more n8n branch.
+- **Demo emails go to one inbox.** Resend's test sender only delivers to the account owner, so the live n8n sends every student email to a test inbox, with the intended student in the subject.
+- **Deleting a student doesn't wipe their data yet.** `anonymizeUser` exists, but Supabase Auth has no deletion webhook, so nothing calls it (D8).
 - **Crons run daily** (Vercel Hobby limit). The first delivery happens immediately after each change, so the daily job is only a safety net.
 - Lesson videos are a public CC0 placeholder clip.
 
@@ -190,7 +192,7 @@ docs/               architecture, decisions, design system, build log
 
 I built this in three days with AI coding tools, and I want to be clear about who did what.
 
-- **Me:** I chose the problem from the role description, set the requirements and the milestone plan, made the product decisions (AMAR-style design, real prices, grace length, retention offers, asking students for their name), set up and configured Supabase, Clerk, Stripe and GitHub, ran the live flows in the browser, and decided what to fix when testing found problems.
+- **Me:** I chose the problem from the role description, set the requirements and the milestone plan, made the product decisions (AMAR-style design, real prices, grace length, retention offers, asking students for their name), set up and configured Supabase, Stripe and GitHub (and decided to move login from Clerk to Supabase Auth), ran the live flows in the browser, and decided what to fix when testing found problems.
 - **Claude Code (Anthropic)** wrote most of the code, the tests and these docs from that plan, and ran the checks: typecheck, lint, tests, live Stripe test-clock runs and n8n in Docker. The first scaffold step was done with Gemini in Antigravity from a written task prompt.
 - **How it was kept honest:** every feature was checked against a real system before moving on. That's how the hung connections on the transaction pooler (D15), a timestamp bug that only appeared on real Postgres, a dead placeholder video, and a lockfile that broke Linux CI were all found and fixed. The reasoning for each choice is in `docs/DECISIONS.md`, and the original task prompts are in `docs/build-log/`.
 

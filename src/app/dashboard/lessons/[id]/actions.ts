@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth";
 import { z } from "zod";
 import { db } from "@/db";
 import { saveProgress } from "@/lib/progress";
@@ -13,7 +13,7 @@ const input = z.object({
 
 export async function saveProgressAction(lessonId: string, positionSec: number, completed: boolean) {
   // The user id always comes from the session, never from the client.
-  const { userId } = await auth();
+  const userId = await getUserId();
   if (!userId) throw new Error("Not signed in");
   const parsed = input.parse({ lessonId, positionSec, completed });
   await saveProgress(db, userId, parsed.lessonId, parsed);

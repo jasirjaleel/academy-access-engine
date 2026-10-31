@@ -16,7 +16,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Runs when any academy workflow fails. Sends one alert email (or logs it when no email provider is set).\nconst e = $input.first().json;\nconst failedNode = e.execution?.lastNodeExecuted || 'unknown node';\nconst message = e.execution?.error?.message || 'unknown error';\nconst url = e.execution?.url || '';\nreturn [{\n  json: {\n    mode: $env.RESEND_API_KEY && $env.ALERT_EMAIL ? 'resend' : 'dry_run',\n    request: {\n      from: $env.EMAIL_FROM || 'Demo Academy <onboarding@resend.dev>',\n      to: [$env.ALERT_EMAIL || 'admin@example.com'],\n      subject: `[Academy] Workflow failed at \"${failedNode}\"`,\n      text: `Workflow: ${e.workflow?.name}\\nNode: ${failedNode}\\nError: ${message}\\nExecution: ${url}`,\n    },\n  },\n}];\n"
+        "jsCode": "// ── Settings: change these in n8n, no server restart needed ──────────────────\nconst SEND_ALERT = false;                                   // true once the \"Resend API key\" credential is set on \"Send alert (Resend)\"\nconst ALERT_EMAIL = 'you@example.com';                      // where failure alerts go (Resend's test sender only delivers to your Resend sign-up email)\nconst EMAIL_FROM = 'Demo Academy <onboarding@resend.dev>';\n// ─────────────────────────────────────────────────────────────────────────────\nconst e = $input.first().json;\nconst failedNode = e.execution?.lastNodeExecuted || 'unknown node';\nconst message = e.execution?.error?.message || 'unknown error';\nconst lines = [\n  `Workflow: ${e.workflow?.name}`,\n  `Node: ${failedNode}`,\n  `Error: ${message}`,\n  `Execution: ${e.execution?.url || ''}`,\n];\nconst esc = (s) => String(s).replace(/[&<>\"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[c]));\nreturn [{\n  json: {\n    mode: SEND_ALERT ? 'resend' : 'dry_run',\n    request: {\n      from: EMAIL_FROM,\n      to: [ALERT_EMAIL],\n      subject: `[Academy] Workflow failed at \"${failedNode}\"`,\n      text: lines.join('\\n'),\n      html: `<p>${lines.map(esc).join('<br>')}</p>`,\n    },\n  },\n}];\n"
       },
       "id": "e2",
       "name": "Compose alert",
@@ -34,7 +34,7 @@
         "output": "={{ $json.mode === 'resend' ? 0 : 1 }}"
       },
       "id": "e3",
-      "name": "Email provider?",
+      "name": "Send alert?",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
@@ -46,15 +46,8 @@
       "parameters": {
         "method": "POST",
         "url": "https://api.resend.com/emails",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.RESEND_API_KEY }}"
-            }
-          ]
-        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.request) }}",
@@ -100,14 +93,14 @@
       "main": [
         [
           {
-            "node": "Email provider?",
+            "node": "Send alert?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Email provider?": {
+    "Send alert?": {
       "main": [
         [
           {
@@ -130,5 +123,5 @@
     "executionOrder": "v1"
   },
   "pinData": {},
-  "versionId": "6f1e4f6e-9b1c-4a52-9d31-acad00000201"
+  "versionId": "6f1e4f6e-9b1c-4a52-9d31-acad00000205"
 }

@@ -5,9 +5,9 @@ const envSchema = z
   .object({
     DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
     DATABASE_URL_DIRECT: z.string().optional(),
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1, "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required"),
-    CLERK_SECRET_KEY: z.string().min(1, "CLERK_SECRET_KEY is required"),
-    CLERK_WEBHOOK_SIGNING_SECRET: z.string().optional(), // only needed once deployed (Clerk can't reach localhost)
+    NEXT_PUBLIC_SUPABASE_URL: z.string().min(1, "NEXT_PUBLIC_SUPABASE_URL is required"),
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1, "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is required"),
+    SUPABASE_SECRET_KEY: z.string().min(1, "SUPABASE_SECRET_KEY is required"), // server only
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
@@ -20,6 +20,7 @@ const envSchema = z
     NEXT_PUBLIC_APP_URL: z.string().min(1, "NEXT_PUBLIC_APP_URL is required"),
     GA4_MEASUREMENT_ID: z.string().optional(),
     GA4_API_SECRET: z.string().optional(),
+    VERCEL: z.string().optional(), // set by Vercel on every deployment
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),

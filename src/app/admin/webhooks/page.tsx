@@ -13,7 +13,7 @@ export default async function AdminWebhooksPage({ searchParams }: { searchParams
 
   return (
     <div>
-      <PageTitle title="Webhook log" subtitle="Every Stripe and Clerk event, processed exactly once. Latest 100." />
+      <PageTitle title="Webhook log" subtitle="Every Stripe event, processed exactly once. Latest 100." />
       <FilterTabs base="/admin/webhooks" current={result} options={RESULTS} />
       <Table head={["Received", "Provider", "Type", "Result", "Event id"]} empty={rows.length === 0}>
         {rows.map((r) => (

@@ -2,8 +2,10 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 import { entitlements, invoices, subscriptions } from "@/db/schema";
 import type { Database } from "@/db/types";
+import { PRODUCTS, isProductKey } from "@/lib/catalogue";
 import { enqueueEvent } from "@/lib/events";
 import { syncBundle } from "./bundle";
+import { programmeIdBySlug } from "./entitlements";
 import { applySubscriptionState } from "./subscription-state";
 import type { BillingDeps, HandlerResult } from "./types";
 
@@ -63,6 +65,26 @@ export async function handleInvoicePaymentFailed(
       target: invoices.id,
       set: { status: invoice.status ?? "open", attemptCount: invoice.attempt_count, firstFailedAt },
     });
+
+  // Events delivered late (after the subscription was already past_due) never granted access:
+  // start it in grace instead of locking the student out. An existing row is left alone.
+  const sub = await tx.query.subscriptions.findFirst({ where: eq(subscriptions.id, subId) });
+  if (sub) {
+    // D9: an unknown product is a config mistake, so fail loudly (Stripe retries the event).
+    if (!isProductKey(sub.productKey)) throw new Error(`Unknown product key on subscription ${subId}`);
+    const [slug] = PRODUCTS[sub.productKey].programmes;
+    await tx
+      .insert(entitlements)
+      .values({
+        userId,
+        programmeId: await programmeIdBySlug(tx, slug),
+        source: "subscription",
+        sourceRef: subId,
+        status: "grace",
+        graceUntil,
+      })
+      .onConflictDoNothing();
+  }
 
   // Only live access moves to grace; a revoked entitlement stays revoked.
   await tx

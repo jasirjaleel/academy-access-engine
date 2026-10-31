@@ -1,6 +1,5 @@
 "use client";
 
-import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -21,24 +20,18 @@ function Logo() {
   );
 }
 
-function AuthControls() {
+function AuthControls({ signedIn }: { signedIn: boolean }) {
   return (
-    <>
-      <Show when="signed-out">
-        <SignInButton>
-          <button className="rounded-full bg-midnight px-4 py-2 text-sm font-semibold text-white ring-1 ring-amber/60 transition hover:ring-amber">
-            Sign in
-          </button>
-        </SignInButton>
-      </Show>
-      <Show when="signed-in">
-        <UserButton />
-      </Show>
-    </>
+    <Link
+      href={signedIn ? "/dashboard" : "/sign-in"}
+      className="inline-block rounded-full bg-midnight px-4 py-2 text-sm font-semibold text-white ring-1 ring-amber/60 transition hover:ring-amber"
+    >
+      {signedIn ? "Go to app" : "Sign in"}
+    </Link>
   );
 }
 
-export function SiteHeader() {
+export function SiteHeader({ signedIn }: { signedIn: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -63,13 +56,10 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden sm:block">
-          <AuthControls />
+          <AuthControls signedIn={signedIn} />
         </div>
 
         <div className="flex items-center gap-3 sm:hidden">
-          <Show when="signed-in">
-            <UserButton />
-          </Show>
           <button
             type="button"
             aria-label={open ? "Close menu" : "Open menu"}
@@ -94,11 +84,9 @@ export function SiteHeader() {
               {l.label}
             </Link>
           ))}
-          <Show when="signed-out">
-            <div className="px-2 py-2">
-              <AuthControls />
-            </div>
-          </Show>
+          <div className="px-2 py-2">
+            <AuthControls signedIn={signedIn} />
+          </div>
         </nav>
       )}
     </header>

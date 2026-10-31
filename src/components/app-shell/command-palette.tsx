@@ -2,6 +2,10 @@
 
 import {
   BookOpen,
+  Send,
+  Users,
+  Wallet,
+  Webhook,
   CreditCard,
   Home,
   LayoutDashboard,
@@ -28,11 +32,11 @@ export const openCommandPalette = () =>
 
 /** ⌘K / Ctrl+K: jump to any page, programme or lesson. */
 export function CommandPalette({
+  mode,
   data,
-  isAdmin,
 }: {
+  mode: "student" | "admin";
   data: SidebarData;
-  isAdmin: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -76,74 +80,94 @@ export function CommandPalette({
       className="bg-midnight-2 ring-1 ring-white/10"
     >
       <Command className="bg-transparent">
-        <CommandInput value={query} onValueChange={setQuery} placeholder="Search lessons, programmes, pages…" />
+        <CommandInput
+          value={query}
+          onValueChange={setQuery}
+          placeholder="Search lessons, programmes, pages…"
+        />
         <CommandList>
           <CommandEmpty>Nothing found.</CommandEmpty>
-          <CommandGroup heading="Go to">
-            <CommandItem onSelect={() => go("/dashboard")}>
-              <Home /> Home
-            </CommandItem>
-            {data.continueLesson ? (
-              <CommandItem
-                onSelect={() =>
-                  go(`/dashboard/lessons/${data.continueLesson!.id}`)
-                }
-              >
-                <PlayCircle className="text-amber" /> Continue:{" "}
-                {data.continueLesson.titleEn}
-              </CommandItem>
-            ) : null}
-            <CommandItem onSelect={() => go("/dashboard/billing")}>
-              <CreditCard /> Billing
-            </CommandItem>
-            <CommandItem onSelect={() => go("/dashboard/plans")}>
-              <Sparkles /> Plans &amp; upgrades
-            </CommandItem>
-            {isAdmin ? (
-              <CommandItem onSelect={() => go("/admin")}>
-                <LayoutDashboard /> Admin overview
-              </CommandItem>
-            ) : null}
-          </CommandGroup>
-          {data.programmes.map((p) => (
-            <CommandGroup key={p.slug} heading={p.titleEn}>
-              <CommandItem
-                value={`${p.titleEn} ${p.titleAr} programme`}
-                onSelect={() => go(`/dashboard/programmes/${p.slug}`)}
-              >
-                <BookOpen /> {p.titleEn}{" "}
-                <span className="ml-auto font-arabic text-slate-400" dir="rtl">
-                  {p.titleAr}
-                </span>
-              </CommandItem>
-              {p.lessons.map((l) => (
-                <CommandItem
-                  key={l.id}
-                  value={`${l.titleEn} ${l.titleAr} ${p.titleEn}`}
-                  onSelect={() => go(`/dashboard/lessons/${l.id}`)}
-                >
-                  {l.state === "locked" ? (
-                    <Lock className="text-slate-500" />
-                  ) : (
-                    <PlayCircle />
-                  )}
-                  <span
-                    className={
-                      l.state === "locked" ? "text-slate-500" : undefined
-                    }
-                  >
-                    {l.position}. {l.titleEn}
-                  </span>
-                  <span
-                    className="ml-auto font-arabic text-slate-400"
-                    dir="rtl"
-                  >
-                    {l.titleAr}
-                  </span>
+          {mode === "admin" ? (
+            <CommandGroup heading="Admin">
+              {[
+                { href: "/admin", label: "Overview", icon: LayoutDashboard },
+                { href: "/admin/students", label: "Students", icon: Users },
+                { href: "/admin/payments", label: "Payments", icon: Wallet },
+                { href: "/admin/webhooks", label: "Webhooks", icon: Webhook },
+                { href: "/admin/outbox", label: "Messages", icon: Send },
+              ].map((i) => (
+                <CommandItem key={i.href} onSelect={() => go(i.href)}>
+                  <i.icon /> {i.label}
                 </CommandItem>
               ))}
             </CommandGroup>
-          ))}
+          ) : (
+            <>
+              <CommandGroup heading="Go to">
+                <CommandItem onSelect={() => go("/dashboard")}>
+                  <Home /> Home
+                </CommandItem>
+                {data.continueLesson ? (
+                  <CommandItem
+                    onSelect={() =>
+                      go(`/dashboard/lessons/${data.continueLesson!.id}`)
+                    }
+                  >
+                    <PlayCircle className="text-amber" /> Continue:{" "}
+                    {data.continueLesson.titleEn}
+                  </CommandItem>
+                ) : null}
+                <CommandItem onSelect={() => go("/dashboard/billing")}>
+                  <CreditCard /> Billing
+                </CommandItem>
+                <CommandItem onSelect={() => go("/dashboard/plans")}>
+                  <Sparkles /> Plans &amp; upgrades
+                </CommandItem>
+              </CommandGroup>
+              {data.programmes.map((p) => (
+                <CommandGroup key={p.slug} heading={p.titleEn}>
+                  <CommandItem
+                    value={`${p.titleEn} ${p.titleAr} programme`}
+                    onSelect={() => go(`/dashboard/programmes/${p.slug}`)}
+                  >
+                    <BookOpen /> {p.titleEn}{" "}
+                    <span
+                      className="ml-auto font-arabic text-slate-400"
+                      dir="rtl"
+                    >
+                      {p.titleAr}
+                    </span>
+                  </CommandItem>
+                  {p.lessons.map((l) => (
+                    <CommandItem
+                      key={l.id}
+                      value={`${l.titleEn} ${l.titleAr} ${p.titleEn}`}
+                      onSelect={() => go(`/dashboard/lessons/${l.id}`)}
+                    >
+                      {l.state === "locked" ? (
+                        <Lock className="text-slate-500" />
+                      ) : (
+                        <PlayCircle />
+                      )}
+                      <span
+                        className={
+                          l.state === "locked" ? "text-slate-500" : undefined
+                        }
+                      >
+                        {l.position}. {l.titleEn}
+                      </span>
+                      <span
+                        className="ml-auto font-arabic text-slate-400"
+                        dir="rtl"
+                      >
+                        {l.titleAr}
+                      </span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ))}
+            </>
+          )}
         </CommandList>
       </Command>
     </CommandDialog>

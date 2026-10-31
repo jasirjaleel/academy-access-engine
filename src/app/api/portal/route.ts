@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getUserId } from "@/lib/auth";
 import { db } from "@/db";
 import { env } from "@/lib/env";
 import { getStripe } from "@/lib/stripe";
@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 /** Opens Stripe's Billing Portal (update card, invoices). Cancelling uses our own flow (M6). */
 export async function POST() {
-  const { userId } = await auth();
+  const userId = await getUserId();
   if (!userId) return Response.json({ error: "Please sign in first." }, { status: 401 });
 
   const user = await getOrCreateUser(db);

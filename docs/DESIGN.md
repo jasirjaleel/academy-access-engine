@@ -48,7 +48,7 @@ Text colours: headings `text-white`, body `text-slate-200`, secondary `text-slat
 | **Lesson thumbnail tile** | `aspect-video rounded-xl bg-gradient-to-br from-teal to-midnight ring-1 ring-white/10` + the programme icon centred |
 | **Inputs** | `bg-white/5 ring-1 ring-white/10 rounded-xl focus:ring-amber` |
 
-Clerk components: pass `appearance={{ baseTheme: dark, variables: { colorPrimary: "#ED8C44", colorBackground: "#16213A" } }}` (`dark` from `@clerk/themes`).
+Auth forms (`src/components/auth-form.tsx`): the same midnight card as the rest of the site, amber primary button, errors in a red-tinted box with `role="alert"`.
 
 ## Layout
 - Base spacing unit 4 px (Tailwind default). Page container `max-w-6xl mx-auto px-4 sm:px-6`. Sections `py-12 sm:py-16`.
@@ -60,6 +60,6 @@ Clerk components: pass `appearance={{ baseTheme: dark, variables: { colorPrimary
 Calm and respectful. No confetti, emojis or gamified streaks. Greetings: "Assalāmu ʿalaykum, {name}". Success copy may use "Bārak Allāhu fīk".
 
 ## App shell (signed-in students)
-- Signed-in students never see the marketing pages: `/` → `/dashboard`, `/pricing` → `/dashboard/plans` (in `src/proxy.ts`, with a client-side backup in `SignedInRedirect`).
+- Signed-in students never see the marketing pages: `/` → `/dashboard`, `/pricing` → `/dashboard/plans` (in `src/proxy.ts`).
 - `/dashboard/*` and `/admin/*` render inside `AppShell`: the shadcn `Sidebar` (`collapsible="icon"`, ⌘B, cookie-persisted, a drawer from the left below 768 px), a sticky top bar with breadcrumbs and search, and a ⌘K command palette.
 - Sidebar: glassy midnight (`--sidebar` at 72% + backdrop blur), uppercase section labels, an amber inset bar and glow on the active item, programme tree with lesson states (✓ done, ◉ in progress, ▶ open, 🔒 locked), a red dot on Billing during grace, and the Admin section for admins only.

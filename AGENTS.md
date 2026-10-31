@@ -17,8 +17,8 @@ The architecture, schema and event flow are fixed in `docs/ARCHITECTURE.md`. Fol
 | Framework | Next.js (latest stable), App Router, **TypeScript strict**, `src/` dir |
 | UI | Tailwind CSS v4 + shadcn/ui (Radix), lucide-react icons, **Inter** + Noto Naskh Arabic. Look and feel: `docs/DESIGN.md` |
 | Forms | React Hook Form + Zod |
-| Auth | Clerk (`@clerk/nextjs` v7, Core 3). Use `<Show when="signed-in">` (`<SignedIn>`/`<SignedOut>` were removed). Route protection lives in `src/proxy.ts` (Next 16 renamed middleware). |
-| DB | Supabase Postgres via **Drizzle ORM** + `postgres` driver (server only). Do **not** use `@supabase/supabase-js`. |
+| Auth | Supabase Auth, email + password (`@supabase/ssr`, D17). Server code uses `getAuthUser()` / `getUserId()` / `requireAdmin()` from `src/lib/auth.ts`; admins have `app_metadata.role = "admin"`. Route protection and session refresh live in `src/proxy.ts` (Next 16 renamed middleware). |
+| DB | Supabase Postgres via **Drizzle ORM** + `postgres` driver (server only). Data goes through Drizzle only: `@supabase/supabase-js` / `@supabase/ssr` are for **auth only** (`src/lib/supabase/*`, D17), never for reading or writing tables. |
 | Payments | Stripe Node SDK, **test mode only** |
 | Email | Resend (sent from n8n, not from the app) |
 | Automations | n8n (workflows exported to `n8n/`) |
@@ -32,7 +32,8 @@ src/
   app/
     (marketing)/page.tsx          landing
     (marketing)/pricing/page.tsx  pricing + checkout buttons
-    dashboard/                    student area (Clerk-protected)
+    (marketing)/sign-in, sign-up  our own email + password forms (auth-actions.ts)
+    dashboard/                    student area (signed-in only)
       page.tsx                    My programmes + billing card + continue watching
       programmes/[slug]/page.tsx  lesson list
       lessons/[id]/page.tsx       lesson player + mark complete
@@ -40,7 +41,6 @@ src/
     admin/                        admin area (role = admin)
     api/
       webhooks/stripe/route.ts
-      webhooks/clerk/route.ts
       checkout/route.ts
       portal/route.ts
       cron/expire-grace/route.ts

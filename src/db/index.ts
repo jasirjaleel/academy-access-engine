@@ -14,7 +14,9 @@ const client =
   globalForDb.pgClient ??
   postgres(env.DATABASE_URL, {
     prepare: false,
-    max: 5,
+    // The session pooler allows 15 clients in total. On Vercel every instance gets its own pool,
+    // so a webhook burst (e.g. a test clock advance) would fill it at 5 each; 1 each scales out instead.
+    max: env.VERCEL ? 1 : 5,
     idle_timeout: 20,
     max_lifetime: 60 * 10,
     connect_timeout: 10,
