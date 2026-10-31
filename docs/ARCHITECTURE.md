@@ -125,7 +125,7 @@ Cron `expire-grace` (daily, protected by `CRON_SECRET`): entitlements in `grace`
 |---|---|---|
 | `student.enrolled` | `enrolled:{userId}:{productKey}` | welcome email + "start lesson 1" |
 | `student.inactive_3d` | `inactive3d:{userId}` | nudge (from the daily cron: enrolled ≥3 days, 0 progress) |
-| `payment.failed` | `payfail:{invoiceId}:{attempt}` | email + WhatsApp (if opted in) with portal link |
+| `payment.failed` | `payfail:{invoiceId}:{attempt}` | email with portal link (WhatsApp later, if opted in) |
 | `payment.recovered` | `recovered:{invoiceId}` | thank-you email |
 | `subscription.cancel_scheduled` | `cancelsched:{subId}` | "sorry to see you go" + offer |
 | `subscription.ended` | `ended:{subId}` | win-back after 14 days |
