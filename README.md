@@ -4,7 +4,7 @@
 
 **A student platform for an online Islamic-studies academy: a premium student dashboard on top of a payment, access and messaging engine that stays correct when payments fail, webhooks repeat, and services go down.**
 
-Built as proof of work for the *Full-Stack Developer & Automation Engineer* role at Al-Madrasatu Ar-Raḥmāniyyah (AMAR). It runs under a neutral brand, "Demo Academy", styled to fit AMAR's design language. It's a concept and isn't affiliated with AMAR. Everything runs in **Stripe test mode**.
+Built as proof of work for a *Full-Stack Developer & Automation Engineer* role at an online Islamic academy. It runs under a neutral brand, "Demo Academy", styled to fit that academy's design language. It's a concept and isn't affiliated with any academy. Everything runs in **Stripe test mode**.
 
 **Live demo:** https://academy-access-engine.vercel.app (Stripe test mode: pay with card `4242 4242 4242 4242`, any future date, any CVC)
 
@@ -192,7 +192,7 @@ docs/               architecture, decisions, design system, build log
 
 I built this in three days with AI coding tools, and I want to be clear about who did what.
 
-- **Me:** I chose the problem from the role description, set the requirements and the milestone plan, made the product decisions (AMAR-style design, real prices, grace length, retention offers, asking students for their name), set up and configured Supabase, Stripe and GitHub (and decided to move login from Clerk to Supabase Auth), ran the live flows in the browser, and decided what to fix when testing found problems.
+- **Me:** I chose the problem from the role description, set the requirements and the milestone plan, made the product decisions (the design direction, real prices, grace length, retention offers, asking students for their name), set up and configured Supabase, Stripe and GitHub (and decided to move login from Clerk to Supabase Auth), ran the live flows in the browser, and decided what to fix when testing found problems.
 - **Claude Code (Anthropic)** wrote most of the code, the tests and these docs from that plan, and ran the checks: typecheck, lint, tests, live Stripe test-clock runs and n8n in Docker. The first scaffold step was done with Gemini in Antigravity from a written task prompt.
 - **How it was kept honest:** every feature was checked against a real system before moving on. That's how the hung connections on the transaction pooler (D15), a timestamp bug that only appeared on real Postgres, a dead placeholder video, and a lockfile that broke Linux CI were all found and fixed. The reasoning for each choice is in `docs/DECISIONS.md`, and the original task prompts are in `docs/build-log/`.
 
